@@ -27,11 +27,13 @@ init:
     CLRF    INTCON
     CLRF    INTCON2
 
+    ; prescale = 128
+    ; using 16 bits (obviously)
     CLRF    T0CON
     BSF     T0CON,TMR0ON
-    BSF     T0CON,T08BIT
     MOVLW   b'00000110'
     IORWF   T0CON,F
+    CALL    timer0_reset
 
     BSF     INTCON,TMR0IE
     BSF     INTCON,GIE
@@ -41,8 +43,18 @@ main:
     GOTO    main
 
 
+; timer0_reset moves the integer 41992 by breaking it into two 8-bit registers,
+; and then returns.
+timer0_reset:
+    MOVLW   b'10100100'
+    MOVWF   TMR0H
+    MOVLW   b'00001000'
+    MOVWF   TMR0L
+    RETURN
+
+
 timer0_handler:
-    MOVLW   d'22'
+    CALL    timer0_reset
     BCF     INTCON,TMR0IF
     RETFIE
 
