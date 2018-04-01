@@ -100,14 +100,41 @@ main:
 update_score_view:
     CLRF    PORTH
     BSF     PORTH,2
-    ; wreg holds bit pattern
-    MOVWF   PORTJ
+    MOVF    p1_score,W
+    CALL    get_score_repr
     CLRF    PORTH
     BSF     PORTH,0
-    ; wreg holds bit pattern
-    MOVWF   PORTJ
+    MOVF    p1_score,W
+    CALL    get_score_repr
     RETURN
 
+get_score_repr:
+    RETURN
+
+display_0:
+    MOVLW   b'00111111'
+    MOVWF   PORTJ
+    RETURN
+display_1:
+    MOVLW   b'00000110'
+    MOVWF   PORTJ
+    RETURN
+display_2:
+    MOVLW   b'01011011'
+    MOVWF   PORTJ
+    RETURN
+display_3:
+    MOVLW   b'01001111'
+    MOVWF   PORTJ
+    RETURN
+display_4:
+    MOVLW   b'01100110'
+    MOVWF   PORTJ
+    RETURN
+display_5:
+    MOVLW   b'01101101'
+    MOVWF   PORTJ
+    RETURN
 
 timer0_handler:
     MOVWF   wreg_ctx
