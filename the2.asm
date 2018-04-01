@@ -1,5 +1,7 @@
 #include "p18f8722.inc"
 
+#define T0_TIMES_DEFAULT    d'46'
+
  CONFIG OSC = HSPLL, FCMEN = OFF, IESO = OFF
  CONFIG PWRT = OFF, BOREN = OFF, BORV = 3
  CONFIG WDT = OFF, WDTPS = 32768
@@ -16,6 +18,10 @@
  CONFIG EBTR5 = OFF, EBTR6 = OFF, EBTR7 = OFF
  CONFIG EBTRB = OFF
 
+ UDATA_ACS
+t0_times   RES 1
+move_ball  RES 1
+
 
  ORG 0x00
  GOTO init
@@ -24,39 +30,46 @@
 
 
 init:
+    ; Clear interrupt control registers.
     CLRF    INTCON
     CLRF    INTCON2
 
-    ; prescale = 128
-    ; using 16 bits (obviously)
+    ; Set Timer0 as 8-bits, set prescale=256.
     CLRF    T0CON
     BSF     T0CON,TMR0ON
-    MOVLW   b'00000110'
+    MOVLW   b'01000111'
     IORWF   T0CON,F
-    CALL    timer0_reset
 
+    ; Clear some files.
+    CLRF    TMR0L
+    CLRF    move_ball
+
+    ; Initialize move_ball counter with 46. Timer0 interrupts every
+    ; 6.55 ms, so we need 46 times that to achieve a delay of 300 ms.
+    MOVLW   T0_TIMES_DEFAULT
+    MOVWF   t0_times
+
+    ; Enable interrupts!
     BSF     INTCON,TMR0IE
     BSF     INTCON,GIE
 
 
 main:
+    TSTFSZ  move_ball
+    CLRF    move_ball
     GOTO    main
 
 
-; timer0_reset moves the integer 41992 by breaking it into two 8-bit registers,
-; and then returns.
-timer0_reset:
-    MOVLW   b'10100100'
-    MOVWF   TMR0H
-    MOVLW   b'00001000'
-    MOVWF   TMR0L
-    RETURN
-
-
 timer0_handler:
-    CALL    timer0_reset
+    CLRF    TMR0L
     BCF     INTCON,TMR0IF
+    DCFSNZ  t0_times,F
+    GOTO    compl_move_ball
     RETFIE
-
+compl_move_ball:
+    COMF    move_ball
+    MOVLW   T0_TIMES_DEFAULT
+    MOVWF   t0_times
+    RETFIE
 
  END
