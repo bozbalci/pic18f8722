@@ -19,8 +19,11 @@
  CONFIG EBTRB = OFF
 
  UDATA_ACS
-t0_times   RES 1
-move_ball  RES 1
+t0_times    RES 1
+move_ball   RES 1
+wreg_ctx    RES 1
+p1_score    RES 1
+p2_score    RES 1
 
 
  ORG 0x00
@@ -49,6 +52,41 @@ init:
     MOVLW   T0_TIMES_DEFAULT
     MOVWF   t0_times
 
+    ; Configure PORT[A-F] as digital outputs (LEDs).
+    CLRF    PORTA
+    CLRF    TRISA
+    CLRF    PORTB
+    CLRF    TRISB
+    CLRF    PORTC
+    CLRF    TRISC
+    CLRF    PORTD
+    CLRF    TRISD
+    CLRF    PORTE
+    CLRF    TRISE
+    CLRF    PORTF
+    CLRF    TRISF
+    MOVLW   0x0F
+    MOVWF   ADCON1
+
+    ; Configure PORTG as input (used to move the paddles).
+    CLRF    PORTG
+    MOVLW   0x0F
+    MOVWF   TRISG
+
+    ; Configure PORTJ and PORTH as outputs (7-segment display).
+    CLRF    PORTJ
+    CLRF    PORTH
+    CLRF    TRISJ
+    CLRF    TRISH
+
+    MOVLW   0xFF
+    MOVWF   PORTJ
+    MOVWF   PORTH
+
+    MOVLW   b'01100111'
+    MOVWF   PORTJ
+
+
     ; Enable interrupts!
     BSF     INTCON,TMR0IE
     BSF     INTCON,GIE
@@ -59,17 +97,33 @@ main:
     CLRF    move_ball
     GOTO    main
 
+update_score_view:
+    CLRF    PORTH
+    BSF     PORTH,2
+    ; wreg holds bit pattern
+    MOVWF   PORTJ
+    CLRF    PORTH
+    BSF     PORTH,0
+    ; wreg holds bit pattern
+    MOVWF   PORTJ
+    RETURN
+
 
 timer0_handler:
-    CLRF    TMR0L
+    MOVWF   wreg_ctx
+    MOVLW   0x00
+    MOVWF   TMR0L
     BCF     INTCON,TMR0IF
     DCFSNZ  t0_times,F
-    GOTO    compl_move_ball
+    BRA     compl_move_ball
+    MOVF    wreg_ctx, W
     RETFIE
 compl_move_ball:
-    COMF    move_ball
+    MOVLW   0xFF
+    MOVWF   move_ball
     MOVLW   T0_TIMES_DEFAULT
     MOVWF   t0_times
+    MOVF    wreg_ctx, W
     RETFIE
 
  END
