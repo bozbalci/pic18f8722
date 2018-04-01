@@ -109,7 +109,20 @@ update_score_view:
     RETURN
 
 get_score_repr:
-    RETURN
+    RLNCF   WREG
+    ADDLW   0x08
+    ADDWF   PCL,W
+    BC      _carry
+    MOVWF   PCL
+_carry:
+    INCF    PCLATH,F
+    MOVWF   PCL
+    BRA     display_0
+    BRA     display_1
+    BRA     display_2
+    BRA     display_3
+    BRA     display_4
+    BRA     display_5
 
 display_0:
     MOVLW   b'00111111'
