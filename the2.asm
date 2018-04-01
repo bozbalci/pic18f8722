@@ -24,6 +24,13 @@ move_ball   RES 1
 wreg_ctx    RES 1
 p1_score    RES 1
 p2_score    RES 1
+paddle      RES 1
+p1_paddle   RES 1
+p2_paddle   RES 1
+p1uc        RES 1
+p1dc        RES 1
+p2uc        RES 1
+p2dc        RES 1
 
 
  ORG 0x00
@@ -79,13 +86,16 @@ init:
     CLRF    TRISJ
     CLRF    TRISH
 
-    MOVLW   0xFF
-    MOVWF   PORTJ
-    MOVWF   PORTH
+    MOVLW   03h
+    MOVWF   p1_score
+    MOVLW   04h
+    MOVWF   p2_score
 
-    MOVLW   b'01100111'
-    MOVWF   PORTJ
+    CLRF    p1uc
 
+    MOVLW   b'00011100'
+    MOVWF   p1_paddle
+    MOVWF   p2_paddle
 
     ; Enable interrupts!
     BSF     INTCON,TMR0IE
@@ -95,17 +105,50 @@ init:
 main:
     TSTFSZ  move_ball
     CLRF    move_ball
+
+    CALL    update_score_view
+
+    CALL    button_p1up
+    CALL    button_p1up_commit
+
+    CALL    button_p1down
+    CALL    button_p1down_commit
+
+    CALL    button_p2up
+    CALL    button_p2up_commit
+
+    CALL    button_p2down
+    CALL    button_p2down_commit
+
+    CALL    update_game_view
+
     GOTO    main
+
+
+update_game_view:
+    CLRF    PORTA
+    CLRF    PORTF
+
+    MOVF    p1_paddle,W
+    IORWF   PORTA,F
+    MOVF    p2_paddle,W
+    IORWF   PORTF,F
+
+    RETURN
 
 update_score_view:
     CLRF    PORTH
-    BSF     PORTH,2
+    CLRF    PORTJ
+    BSF     PORTH,1
     MOVF    p1_score,W
     CALL    get_score_repr
+    CALL    sfssdu
     CLRF    PORTH
-    BSF     PORTH,0
-    MOVF    p1_score,W
+    CLRF    PORTJ
+    BSF     PORTH,3
+    MOVF    p2_score,W
     CALL    get_score_repr
+    CALL    sfssdu
     RETURN
 
 get_score_repr:
@@ -123,7 +166,6 @@ _carry:
     BRA     display_3
     BRA     display_4
     BRA     display_5
-
 display_0:
     MOVLW   b'00111111'
     MOVWF   PORTJ
@@ -149,16 +191,128 @@ display_5:
     MOVWF   PORTJ
     RETURN
 
+sfssdu:
+    MOVLW   0xFF
+_sfssdu_body:
+    DECFSZ  WREG
+    BRA     _sfssdu_body
+    RETURN
+
+button_p1up:
+    BTFSS   PORTG,3
+    RETURN
+    MOVLW   0x1
+    MOVWF   p1uc
+    RETURN
+
+button_p1down:
+    BTFSS   PORTG,2
+    RETURN
+    MOVLW   0x1
+    MOVWF   p1dc
+    RETURN
+
+button_p2up:
+    BTFSS   PORTG,1
+    RETURN
+    MOVLW   0x1
+    MOVWF   p2uc
+    RETURN
+
+button_p2down:
+    BTFSS   PORTG,0
+    RETURN
+    MOVLW   0x1
+    MOVWF   p2dc
+    RETURN
+
+button_p1up_commit:
+    BTFSC   PORTG,3
+    RETURN
+
+    ; If we reached here, RG3 was either
+    ;   a.) released
+    ;   b.) never pressed
+    ;
+    ; So we check if it was pressed, by using a variable.
+    ; Similar functions apply this Promise-Commit pattern, so we leave out
+    ; the extra comments there.
+    CLRF    WREG
+    CPFSEQ  p1uc
+    BRA     p1u_commit
+    RETURN
+p1u_commit:
+    CLRF    p1uc
+    MOVFF   p1_paddle,paddle
+    CALL    paddle_up
+    MOVFF   paddle,p1_paddle
+    RETURN
+
+button_p1down_commit:
+    BTFSC   PORTG,2
+    RETURN
+    CLRF    WREG
+    CPFSEQ  p1dc
+    BRA     p1d_commit
+    RETURN
+p1d_commit:
+    CLRF    p1dc
+    MOVFF   p1_paddle,paddle
+    CALL    paddle_down
+    MOVFF   paddle,p1_paddle
+    RETURN
+
+button_p2up_commit:
+    BTFSC   PORTG,1
+    RETURN
+    CLRF    WREG
+    CPFSEQ  p2uc
+    BRA     p2u_commit
+    RETURN
+p2u_commit:
+    CLRF    p2uc
+    MOVFF   p2_paddle,paddle
+    CALL    paddle_up
+    MOVFF   paddle,p2_paddle
+    RETURN
+
+button_p2down_commit:
+    BTFSC   PORTG,0
+    RETURN
+    CLRF    WREG
+    CPFSEQ  p2dc
+    BRA     p2d_commit
+    RETURN
+p2d_commit:
+    CLRF    p2dc
+    MOVFF   p2_paddle,paddle
+    CALL    paddle_down
+    MOVFF   paddle,p2_paddle
+    RETURN
+
+
+paddle_up:
+    MOVLW   b'00000111'
+    CPFSEQ  paddle
+    RRNCF   paddle
+    RETURN
+paddle_down:
+    MOVLW   b'00111000'
+    CPFSEQ  paddle
+    RLNCF   paddle
+    RETURN
+    
+
 timer0_handler:
     MOVWF   wreg_ctx
     MOVLW   0x00
     MOVWF   TMR0L
     BCF     INTCON,TMR0IF
     DCFSNZ  t0_times,F
-    BRA     compl_move_ball
+    BRA     _compl_move_ball
     MOVF    wreg_ctx, W
     RETFIE
-compl_move_ball:
+_compl_move_ball:
     MOVLW   0xFF
     MOVWF   move_ball
     MOVLW   T0_TIMES_DEFAULT
