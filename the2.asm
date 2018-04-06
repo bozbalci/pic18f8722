@@ -40,6 +40,7 @@ ball_d                RES 1
 ball_e                RES 1
 ball_f                RES 1
 reinitialize_promise  RES 1
+tmr0l_snapshot        RES 1
 
 
  ORG 0x00
@@ -153,13 +154,13 @@ _move_left:
     TSTFSZ  ball_b
     COMF    handle_collision,F
     CALL    ball_left
-    ; TODO: Up/down
+    CALL    ball_up_down
     RETURN
 _move_right:
     TSTFSZ  ball_e
     COMF    handle_collision,F
     CALL    ball_right
-    ; TODO: Up/down
+    CALL    ball_up_down
     RETURN
 
 ball_left:
@@ -196,6 +197,49 @@ ball_right:
     MOVF    ball_a,W
     CLRF    ball_a
     IORWF   ball_b,F
+    RETURN
+
+ball_up_down:
+    MOVFF   TMR0L,tmr0l_snapshot
+    BTFSC   tmr0l_snapshot,1
+    BRA     _x_1
+_x_0:
+    BTFSC   tmr0l_snapshot,0
+    BRA     _ball_up ; y = 1
+    RETURN ; y = 0
+_x_1:
+    BTFSC   tmr0l_snapshot,0
+    RETURN ; y = 1
+    BRA     _ball_down ; y = 0
+_ball_up:
+    MOVLW   b'00000001'
+    CPFSEQ  ball_a
+    RRNCF   ball_a
+    CPFSEQ  ball_b
+    RRNCF   ball_b
+    CPFSEQ  ball_c
+    RRNCF   ball_c
+    CPFSEQ  ball_d
+    RRNCF   ball_d
+    CPFSEQ  ball_e
+    RRNCF   ball_e
+    CPFSEQ  ball_f
+    RRNCF   ball_f
+    RETURN
+_ball_down:
+    MOVLW   b'00100000'
+    CPFSEQ  ball_a
+    RLNCF   ball_a
+    CPFSEQ  ball_b
+    RLNCF   ball_b
+    CPFSEQ  ball_c
+    RLNCF   ball_c
+    CPFSEQ  ball_d
+    RLNCF   ball_d
+    CPFSEQ  ball_e
+    RLNCF   ball_e
+    CPFSEQ  ball_f
+    RLNCF   ball_f
     RETURN
 
 
