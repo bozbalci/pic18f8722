@@ -19,18 +19,27 @@
  CONFIG EBTRB = OFF
 
  UDATA_ACS
-t0_times    RES 1
-move_ball   RES 1
-wreg_ctx    RES 1
-p1_score    RES 1
-p2_score    RES 1
-paddle      RES 1
-p1_paddle   RES 1
-p2_paddle   RES 1
-p1uc        RES 1
-p1dc        RES 1
-p2uc        RES 1
-p2dc        RES 1
+t0_times              RES 1
+move_ball             RES 1
+wreg_ctx              RES 1
+p1_score              RES 1
+p2_score              RES 1
+paddle                RES 1
+p1_paddle             RES 1
+p2_paddle             RES 1
+p1uc                  RES 1
+p1dc                  RES 1
+p2uc                  RES 1
+p2dc                  RES 1
+ball_direction        RES 1
+handle_collision      RES 1
+ball_a                RES 1
+ball_b                RES 1
+ball_c                RES 1
+ball_d                RES 1
+ball_e                RES 1
+ball_f                RES 1
+reinitialize_promise  RES 1
 
 
  ORG 0x00
@@ -86,16 +95,19 @@ init:
     CLRF    TRISJ
     CLRF    TRISH
 
-    MOVLW   03h
-    MOVWF   p1_score
-    MOVLW   04h
-    MOVWF   p2_score
+    CLRF    p1_score
+    CLRF    p2_score
 
     CLRF    p1uc
+    CLRF    p1dc
+    CLRF    p2uc
+    CLRF    p2dc
+    CLRF    reinitialize_promise
+    COMF    reinitialize_promise,F
 
-    MOVLW   b'00011100'
-    MOVWF   p1_paddle
-    MOVWF   p2_paddle
+    CALL    reinitialize_game
+
+    CLRF    handle_collision
 
     ; Enable interrupts!
     BSF     INTCON,TMR0IE
@@ -103,8 +115,11 @@ init:
 
 
 main:
-    TSTFSZ  move_ball
-    CLRF    move_ball
+    CALL    do_move_ball
+    CALL    do_handle_collision
+    CALL    do_end_game
+
+    CALL    reinitialize_game
 
     CALL    update_score_view
 
@@ -125,13 +140,165 @@ main:
     GOTO    main
 
 
+do_move_ball:
+    BTFSS   move_ball,0
+    RETURN
+
+    CLRF    move_ball
+
+    TSTFSZ  ball_direction
+    BRA     _move_right
+    BRA     _move_left
+_move_left:
+    TSTFSZ  ball_b
+    COMF    handle_collision,F
+    CALL    ball_left
+    ; TODO: Up/down
+    RETURN
+_move_right:
+    TSTFSZ  ball_e
+    COMF    handle_collision,F
+    CALL    ball_right
+    ; TODO: Up/down
+    RETURN
+
+ball_left:
+    MOVF    ball_b,W
+    CLRF    ball_b
+    IORWF   ball_a,F
+    MOVF    ball_c,W
+    CLRF    ball_c
+    IORWF   ball_b,F
+    MOVF    ball_d,W
+    CLRF    ball_d
+    IORWF   ball_c,F
+    MOVF    ball_e,W
+    CLRF    ball_e
+    IORWF   ball_d,F
+    MOVF    ball_f,W
+    CLRF    ball_f
+    IORWF   ball_e,F
+    RETURN
+
+ball_right:
+    MOVF    ball_e,W
+    CLRF    ball_e
+    IORWF   ball_f,F
+    MOVF    ball_d,W
+    CLRF    ball_d
+    IORWF   ball_e,F
+    MOVF    ball_c,W
+    CLRF    ball_c
+    IORWF   ball_d,F
+    MOVF    ball_b,W
+    CLRF    ball_b
+    IORWF   ball_c,F
+    MOVF    ball_a,W
+    CLRF    ball_a
+    IORWF   ball_b,F
+    RETURN
+
+
+do_handle_collision:
+    BTFSS   handle_collision,0
+    RETURN
+
+    CLRF    handle_collision
+
+    TSTFSZ  ball_direction
+    BRA     _right_check
+    BRA     _left_check
+_left_check:
+    MOVF    p1_paddle,W
+    ANDWF   ball_a,W
+    TSTFSZ  WREG
+    BRA     _ball_collided
+    BRA     _p2_scored
+_right_check:
+    MOVF    p2_paddle,W
+    ANDWF   ball_f,W
+    TSTFSZ  WREG
+    BRA     _ball_collided
+    BRA     _p1_scored
+_p1_scored:
+    INCF    p1_score,F
+    COMF    reinitialize_promise,F
+    RETURN
+_p2_scored:
+    INCF    p2_score,F
+    COMF    reinitialize_promise,F
+    RETURN
+_ball_collided:
+    COMF    ball_direction,F
+    RETURN
+
+
+reinitialize_game:
+    BTFSS   reinitialize_promise,0
+    RETURN
+
+    CLRF    reinitialize_promise
+
+    MOVLW   b'00011100'
+    MOVWF   p1_paddle
+    MOVWF   p2_paddle
+
+    ; Initialize the ball
+    CLRF    ball_a
+    CLRF    ball_b
+    CLRF    ball_c
+    CLRF    ball_d
+    CLRF    ball_e
+    CLRF    ball_f
+    BSF     ball_d,3
+
+    ; 0x00 -> left, 0xFF -> right
+    CLRF    ball_direction
+    RETURN
+
+
+do_end_game:
+    MOVLW   d'5'
+    CPFSEQ  p1_score
+    BRA     _check_p2_score
+    BRA     _end_game
+_check_p2_score:
+    CPFSEQ  p2_score
+    RETURN
+    BRA     _end_game
+_end_game:
+    ; halt and catch fire
+    BCF     INTCON,GIE
+    CALL    update_game_view
+_end_loop:
+    CALL    update_score_view
+    GOTO    _end_loop
+
+
 update_game_view:
     CLRF    PORTA
+    CLRF    PORTB
+    CLRF    PORTC
+    CLRF    PORTD
+    CLRF    PORTE
     CLRF    PORTF
 
     MOVF    p1_paddle,W
     IORWF   PORTA,F
     MOVF    p2_paddle,W
+    IORWF   PORTF,F
+
+    MOVF    ball_a,W
+    IORWF   PORTA,F
+    MOVF    ball_b,W
+    IORWF   PORTB,F
+    MOVF    ball_c,W
+    IORWF   PORTC,F
+    MOVF    ball_d,W
+    IORWF   PORTD,F
+    MOVF    ball_e,W
+    IORWF   PORTE,F
+    MOVF    ball_f,W
     IORWF   PORTF,F
 
     RETURN
@@ -310,14 +477,14 @@ timer0_handler:
     BCF     INTCON,TMR0IF
     DCFSNZ  t0_times,F
     BRA     _compl_move_ball
-    MOVF    wreg_ctx, W
+    MOVF    wreg_ctx,W
     RETFIE
 _compl_move_ball:
     MOVLW   0xFF
     MOVWF   move_ball
     MOVLW   T0_TIMES_DEFAULT
     MOVWF   t0_times
-    MOVF    wreg_ctx, W
+    MOVF    wreg_ctx,W
     RETFIE
 
  END
