@@ -1,3 +1,8 @@
+; Berk Özbalcı  2171791
+; Yağmur Oymak  2171783
+
+; Paddles move after key release
+
 #include "p18f8722.inc"
 
 #define T0_TIMES_DEFAULT    d'46'
