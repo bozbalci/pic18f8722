@@ -98,7 +98,7 @@ void main(void)
         switch (state) {
             case PS_INITIAL:
                 ClearLCDScreen();
-                WriteCommandToLCD(0x80);   // Goto to the beginning of the first line
+                WriteCommandToLCD(0x80); // Goto to the beginning of the first line
                 WriteStringToLCD(" $>Very  Safe<$ ");
                 WriteCommandToLCD(0xC0); // Goto to the beginning of the second line
                 WriteStringToLCD(" $$$$$$$$$$$$$$ ");
@@ -109,6 +109,7 @@ void main(void)
             case PS_RE1WAIT:
                 while (!PORTEbits.RE1)
                     ;
+                /* FIXME: Button release waiting */
                 while (PORTEbits.RE1)
                     ;
 
@@ -122,7 +123,11 @@ void main(void)
                 break;
 
             case PS_PINSETTING:
-                PORTCbits.RC1 = 1;
+                ClearLCDScreen();
+                WriteCommandToLCD(0x80);
+                WriteStringToLCD(" Set a pin:#### ");
+
+                state = PS_PINSET;
                 break;
 
             case PS_PINSET:
