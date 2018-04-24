@@ -45,7 +45,6 @@ void InitLCD(void)
 
     TRISA = 0;
     TRISC = 0;
-    TRISE = 0;
     TRISF = 0;
     TRISG = 0;
 
@@ -54,7 +53,6 @@ void InitLCD(void)
 
     PORTA = 0;
     PORTC = 0;
-    PORTE = 0;
     PORTF = 0;
     PORTG = 0;
 

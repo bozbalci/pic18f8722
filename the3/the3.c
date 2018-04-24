@@ -40,10 +40,6 @@ ProgramState state;
 
 void init(void)
 {
-
-    TRISB = 0;
-    LATB = 0;
-
     LATE = 0;
     TRISE = 1 << 1;
 
@@ -65,7 +61,6 @@ void __interrupt(high_priority) isr(void)
     TMR0L = 0;
     TMR0IF = 0;
     if (++t0_times == T0_TIMES_DEFAULT) {
-        PORTBbits.RB0 = ~PORTBbits.RB0;
         t0_times = 0;
     }
 }
@@ -95,13 +90,13 @@ _loop1:
 void main(void)
 {
     init();
+    InitLCD();
 
     state = PS_INITIAL;
     
     for (;;) {
         switch (state) {
             case PS_INITIAL:
-                InitLCD();
                 ClearLCDScreen();
                 WriteCommandToLCD(0x80);   // Goto to the beginning of the first line
                 WriteStringToLCD(" $>Very  Safe<$ ");
@@ -127,7 +122,7 @@ void main(void)
                 break;
 
             case PS_PINSETTING:
-                PORTBbits.RB1 = 1;
+                PORTCbits.RC1 = 1;
                 break;
 
             case PS_PINSET:
