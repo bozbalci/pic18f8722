@@ -21,9 +21,9 @@
 #include <stdint.h>
 
 // TODO Uncomment the following line before submission!
-#define DEBUG
+// #define DEBUG
 
-#define T0_TIMES_DEFAULT 46
+#define T0_5MS_INITIAL 61
 
 typedef enum
 {
@@ -41,7 +41,10 @@ typedef enum
 ProgramState state;
 
 volatile uint8_t t0_times;
-volatile uint8_t promise_change_digit;
+volatile uint8_t promise_change_digit, promise_pin_confirmed;
+volatile uint8_t rb6_pressed, rb7_pressed, pot_last;
+
+uint8_t should_blink, pound;
 
 /* [S]leep [F]or [S]even [S]egment [D]isplay [U]pdate */
 void sfssdu(void)
@@ -84,46 +87,16 @@ void init(void)
     INTCON = 0;
     INTCON2 = 0;
 
-    TMR0L = 0;
+    TMR0L = T0_5MS_INITIAL;
     T0CON = 0;
     TMR0ON = 1;
     T08BIT = 1;
     T0CON |= 0b111;
 
     TMR0IE = 1;
-    RBIE = 1;
     RBPU = 0;
 
     ei();
-}
-
-void interrupt isr(void)
-{
-    if (TMR0IF)
-    {
-        TMR0L = 0;
-        TMR0IF = 0;
-        t0_times++;
-    }
-    else if (RBIF)
-    {
-        /* This unorthodox method of reading PORTB is probably required to
-           force a read on all of the bits in PORTB, therefore ending the
-           mismatch condition and allow the RBIF bit to be cleared. */
-        if (PORTB)
-        {
-            if (PORTBbits.RB6)
-            {                
-                promise_change_digit = 1;
-            }
-            else if (PORTBbits.RB7)
-            {
-                // TODO Handle this
-            }
-        }
-        
-        RBIF = 0;
-    }
 }
 
 void delay_3s(void)
@@ -148,22 +121,56 @@ _loop1:
 #endasm
 }
 
-void test(void)
+void interrupt isr(void)
 {
-    while (!PORTB)
+    if (TMR0IF)
     {
-        ;
+        TMR0L = T0_5MS_INITIAL;
+        TMR0IF = 0;
+        t0_times++;
+    }
+    else if (RBIF)
+    {
+        /* This unorthodox method of reading PORTB is probably required to
+           force a read on all of the bits in PORTB, therefore ending the
+           mismatch condition and allow the RBIF bit to be cleared. */
+        if (PORTB)
+        {
+#asm
+            nop
+#endasm
+        }
+
+        RBIF = 0;
+
+        if (!PORTBbits.RB6)
+        {
+            rb6_pressed = 1;
+        }
+        else if (rb6_pressed)
+        {
+            promise_change_digit = 1;
+            rb6_pressed = 0;
+        }
+
+        if (!PORTBbits.RB7)
+        {
+            rb7_pressed = 1;
+        }
+        else if (rb7_pressed)
+        {
+            promise_pin_confirmed = 1;
+            rb7_pressed = 0;
+        }
     }
 }
 
 void main(void)
 {
-    int digits_entered;
+    uint8_t digits_entered;
 
     init();
-    //InitLCD();
-
-        test();
+    InitLCD();
 
     state = PS_INITIAL;
     
@@ -203,25 +210,82 @@ void main(void)
                 WriteStringToLCD(" Set a pin:#### ");
 
                 digits_entered = 0;
+                RBIE = 1;
 
-                while (digits_entered < 4)
+                should_blink = 1;
+                pound = 1;
+
+                while (digits_entered < 3)
                 {
                     if (promise_change_digit)
                     {
-                        /* Commit change_digit and release the promise.
-                           PORTB change interrupt is disabled as it can
-                           cause digits_entered to be incremented
-                           repeatedly. */
-                        RBIE = 0;
-
+                        /* Commit change_digit and release the promise. */
                         promise_change_digit = 0;
                         digits_entered++;
 
-                        RBIE = 1;
+                        should_blink = 1;
+                        pound = 1;
+                        
+                        continue;
                     }
 
                     zeg_dashes();
+
+                    if (t0_times == 50)
+                    {
+                        t0_times = 0;
+
+                        WriteCommandToLCD(0x80 + sizeof(" Set a pin:") - 1 + digits_entered);
+
+                        if (should_blink)
+                        {
+                            pound = !pound;
+
+                            if (pound)
+                            {
+                                WriteStringToLCD("#");
+                            }
+                            else
+                            {
+                                WriteStringToLCD(" ");
+                            }
+                        }
+                    }
                 }
+
+                while (digits_entered != 4)
+                {
+                    if (promise_pin_confirmed)
+                    {
+                        promise_pin_confirmed = 0;
+                        digits_entered++;
+                    }
+
+                    zeg_dashes();
+
+                    if (t0_times == 50)
+                    {
+                        t0_times = 0;
+
+                        WriteCommandToLCD(0x80 + sizeof(" Set a pin:") - 1 + digits_entered);
+
+                        if (should_blink)
+                        {
+                            pound = !pound;
+
+                            if (pound)
+                            {
+                                WriteStringToLCD("#");
+                            }
+                            else
+                            {
+                                WriteStringToLCD(" ");
+                            }
+                        }
+                    }
+                }
+
+                RBIE = 0;
 
                 state = PS_PINSET;
                 break;
@@ -230,8 +294,6 @@ void main(void)
                 ClearLCDScreen();
                 WriteCommandToLCD(0x80);
                 WriteStringToLCD("HASSAS TARTI");
-
-                delay_3s();
 
                 state = PS_TEST;
                 break;
