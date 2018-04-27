@@ -43,12 +43,10 @@ void WriteDataToLCD(char LCDChar)
 void InitLCD(void)
 {
 
-    TRISA = 0;
     TRISC = 0;
     TRISF = 0;
     TRISG = 0;
 
-    PORTA = 0;
     PORTC = 0;
     PORTF = 0;
     PORTG = 0;

@@ -40,11 +40,21 @@ typedef enum
 
 ProgramState state;
 
-volatile uint8_t t0_times;
+volatile uint8_t t0_times, adc_counter;
 volatile uint8_t promise_change_digit, promise_pin_confirmed;
-volatile uint8_t rb6_pressed, rb7_pressed, pot_last;
+volatile uint8_t rb6_pressed, rb7_pressed;
+
+volatile int16_t ad_result;
+int16_t pot_last;
 
 uint8_t should_blink, pound;
+
+uint8_t pot_updated(void)
+{
+    int16_t diff = pot_last - ad_result;
+
+    return (diff >= 50) || (diff <= -50);
+}
 
 /* [S]leep [F]or [S]even [S]egment [D]isplay [U]pdate */
 void sfssdu(void)
@@ -70,6 +80,8 @@ void zeg_dashes(void)
 
 void init(void)
 {
+    TRISA = 0b00111111;
+    PORTA = 0;
     // Configure RB7 and RB6 as inputs, the rest of the PORTB is unused.
     TRISB = 0b11000000;
     PORTB = 0;
@@ -96,6 +108,19 @@ void init(void)
     TMR0IE = 1;
     RBPU = 0;
 
+    /* Channel = 12, GO/DONE = 0, ADON = 1 */
+    ADCON0 = 0b00110001;
+
+    /* Voltage Reference = AVdd, AVss and PCFG = Analog */
+    ADCON1 = 0b00000000;
+
+    /* ADFM = Right justified, ACQT = 2 Tad, ADCS = 64 Tosc */
+    ADCON2 = 0b10001110;
+
+    ADIF = 0;
+    ADIE = 1;
+
+    PEIE = 1;
     ei();
 }
 
@@ -121,6 +146,24 @@ _loop1:
 #endasm
 }
 
+int8_t normalize_ad(int16_t ad)
+{
+    int8_t result;
+
+    if (ad < 1000)
+    {
+        result = ad / 100;
+        return result;
+    }
+
+    return 9;
+}
+
+char get_lcd_repr(int8_t val)
+{
+    return '0' + val;
+}
+
 void interrupt isr(void)
 {
     if (TMR0IF)
@@ -128,6 +171,28 @@ void interrupt isr(void)
         TMR0L = T0_5MS_INITIAL;
         TMR0IF = 0;
         t0_times++;
+
+        /* Count for ADC only if we're in the stage of setting the PIN,
+           i.e. analog inputs are required. */
+        if (state == PS_PINSETTING && ++adc_counter == 20)
+        {
+            adc_counter = 0;
+            ADCON0bits.GO = 1;
+        }
+
+    }
+    else if (ADIF)
+    {
+        if (!ADCON0bits.DONE)
+            // This should never happen!
+            ;
+
+        int16_t high = ADRESH, low = ADRESL;
+        high <<= 8;
+        
+        ad_result = high | low;
+        
+        ADIF = 0;
     }
     else if (RBIF)
     {
@@ -165,6 +230,8 @@ void interrupt isr(void)
     }
 }
 
+
+
 void main(void)
 {
     uint8_t digits_entered;
@@ -172,7 +239,7 @@ void main(void)
     init();
     InitLCD();
 
-    state = PS_INITIAL;
+    state = PS_PINSETTING;
     
     for (;;) {
         switch (state) {
@@ -215,18 +282,40 @@ void main(void)
                 should_blink = 1;
                 pound = 1;
 
+                pot_last = ad_result;
+
                 while (digits_entered < 3)
                 {
-                    if (promise_change_digit)
+                    if (promise_change_digit && !should_blink)
                     {
                         /* Commit change_digit and release the promise. */
+                        pot_last = ad_result;
+
                         promise_change_digit = 0;
-                        digits_entered++;
 
                         should_blink = 1;
                         pound = 1;
-                        
+
+                        WriteCommandToLCD(0x80 + sizeof(" Set a pin:") - 1 + digits_entered);
+                        WriteStringToLCD("#");
+
+                        digits_entered++;
+
                         continue;
+                    }
+
+                    if (pot_updated())
+                    {
+                        char val;
+                        uint8_t normalized;
+
+                        normalized = normalize_ad(ad_result);
+                        val = get_lcd_repr(normalized);
+
+                        WriteCommandToLCD(0x80 + sizeof(" Set a pin:") - 1 + digits_entered);
+                        WriteDataToLCD(val);
+
+                        should_blink = 0;
                     }
 
                     zeg_dashes();
