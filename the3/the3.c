@@ -20,6 +20,9 @@
 #include <xc.h>
 #include <stdint.h>
 
+// TODO Uncomment the following line before submission!
+#define DEBUG
+
 #define T0_TIMES_DEFAULT 46
 
 typedef enum
@@ -35,13 +38,48 @@ typedef enum
     PS_FAILURE
 } ProgramState;
 
-volatile int t0_times;
 ProgramState state;
+
+volatile uint8_t t0_times;
+volatile uint8_t promise_change_digit;
+
+/* [S]leep [F]or [S]even [S]egment [D]isplay [U]pdate */
+void sfssdu(void)
+{
+    uint8_t i = 255;
+
+    while (i)
+    {
+        i--;
+    }
+}
+
+void zeg_dashes(void)
+{
+    PORTJ = 1 << 6;
+    PORTH = 8;
+
+    do
+    {
+        sfssdu();
+    } while (PORTH >>= 1);
+}
 
 void init(void)
 {
-    LATE = 0;
+    // Configure RB7 and RB6 as inputs, the rest of the PORTB is unused.
+    TRISB = 0b11000000;
+    PORTB = 0;
+
+    PORTE = 0;
+
     TRISE = 1 << 1;
+
+    /* Configuration for the 7-segment display */
+    TRISJ = 0;
+    TRISH = 0;
+    PORTJ = 0;
+    PORTH = 0;
 
     INTCON = 0;
     INTCON2 = 0;
@@ -53,15 +91,38 @@ void init(void)
     T0CON |= 0b111;
 
     TMR0IE = 1;
+    RBIE = 1;
+    RBPU = 0;
+
     ei();
 }
 
-void __interrupt(high_priority) isr(void)
+void interrupt isr(void)
 {
-    TMR0L = 0;
-    TMR0IF = 0;
-    if (++t0_times == T0_TIMES_DEFAULT) {
-        t0_times = 0;
+    if (TMR0IF)
+    {
+        TMR0L = 0;
+        TMR0IF = 0;
+        t0_times++;
+    }
+    else if (RBIF)
+    {
+        /* This unorthodox method of reading PORTB is probably required to
+           force a read on all of the bits in PORTB, therefore ending the
+           mismatch condition and allow the RBIF bit to be cleared. */
+        if (PORTB)
+        {
+            if (PORTBbits.RB6)
+            {                
+                promise_change_digit = 1;
+            }
+            else if (PORTBbits.RB7)
+            {
+                // TODO Handle this
+            }
+        }
+        
+        RBIF = 0;
     }
 }
 
@@ -87,10 +148,22 @@ _loop1:
 #endasm
 }
 
+void test(void)
+{
+    while (!PORTB)
+    {
+        ;
+    }
+}
+
 void main(void)
 {
+    int digits_entered;
+
     init();
-    InitLCD();
+    //InitLCD();
+
+        test();
 
     state = PS_INITIAL;
     
@@ -107,11 +180,13 @@ void main(void)
                 break;
 
             case PS_RE1WAIT:
+#ifndef DEBUG
                 while (!PORTEbits.RE1)
                     ;
                 /* FIXME: Button release waiting */
                 while (PORTEbits.RE1)
                     ;
+#endif
 
                 state = PS_DELAY;
                 break;
@@ -127,10 +202,38 @@ void main(void)
                 WriteCommandToLCD(0x80);
                 WriteStringToLCD(" Set a pin:#### ");
 
+                digits_entered = 0;
+
+                while (digits_entered < 4)
+                {
+                    if (promise_change_digit)
+                    {
+                        /* Commit change_digit and release the promise.
+                           PORTB change interrupt is disabled as it can
+                           cause digits_entered to be incremented
+                           repeatedly. */
+                        RBIE = 0;
+
+                        promise_change_digit = 0;
+                        digits_entered++;
+
+                        RBIE = 1;
+                    }
+
+                    zeg_dashes();
+                }
+
                 state = PS_PINSET;
                 break;
 
             case PS_PINSET:
+                ClearLCDScreen();
+                WriteCommandToLCD(0x80);
+                WriteStringToLCD("HASSAS TARTI");
+
+                delay_3s();
+
+                state = PS_TEST;
                 break;
 
             case PS_TEST:

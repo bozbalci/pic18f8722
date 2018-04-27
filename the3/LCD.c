@@ -48,17 +48,10 @@ void InitLCD(void)
     TRISF = 0;
     TRISG = 0;
 
-    TRISH = 0;
-    TRISJ = 0;
-
     PORTA = 0;
     PORTC = 0;
     PORTF = 0;
     PORTG = 0;
-
-    PORTH = 0;
-    PORTJ = 0;
-
 
     LATB5  = 0;   // E  = 0
     LATB2  = 0;   // RS = 0
