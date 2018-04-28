@@ -55,7 +55,7 @@ uint8_t pot_updated(void)
 {
     int16_t diff = pot_last - ad_result;
 
-    return (diff >= 50) || (diff <= -50);
+    return (diff >= 25) || (diff <= -25);
 }
 
 /* [S]leep [F]or [S]even [S]egment [D]isplay [U]pdate */
