@@ -512,7 +512,7 @@ main_loop_init:
 
             case PS_TEST:
                 T1CON |= 1;
-                attempts = 3;
+                attempts = 2;
 
 pintest_attempt:
                 ClearLCDScreen();
