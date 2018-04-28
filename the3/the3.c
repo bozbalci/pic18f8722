@@ -61,7 +61,7 @@ uint8_t pot_updated(void)
 /* [S]leep [F]or [S]even [S]egment [D]isplay [U]pdate */
 void sfssdu(void)
 {
-    uint8_t i = 255;
+    uint16_t i = 1023;
 
     while (i)
     {
