@@ -20,9 +20,6 @@
 #include <xc.h>
 #include <stdint.h>
 
-// TODO Uncomment the following line before submission!
-// #define DEBUG
-
 #define T0_5MS_INITIAL 61
 
 typedef enum
@@ -38,9 +35,9 @@ typedef enum
     PS_FAILURE
 } ProgramState;
 
-ProgramState state;
+volatile ProgramState state;
 
-volatile uint8_t t0_times, adc_counter;
+volatile uint8_t t0_times, t1_times, adc_counter;
 volatile uint8_t promise_change_digit, promise_pin_confirmed, promise_can_promise;
 volatile uint8_t rb6_pressed, rb7_pressed;
 
@@ -50,6 +47,9 @@ int16_t pot_last;
 uint8_t should_blink, pound;
 
 uint8_t pin[4];
+uint8_t input_pin[4];
+
+int8_t countdown = 120, attempts, countdown_snapshot;
 
 uint8_t pot_updated(void)
 {
@@ -165,11 +165,17 @@ void init(void)
     INTCON = 0;
     INTCON2 = 0;
 
+    /* Timer0 config */
     TMR0L = T0_5MS_INITIAL;
     T0CON = 0;
     TMR0ON = 1;
     T08BIT = 1;
     T0CON |= 0b111;
+
+    /* Timer1 config */
+    T1CON = 0b10110000;
+    TMR1IE = 1;
+    TMR1 = 0xBE3;
 
     TMR0IE = 1;
     RBPU = 0;
@@ -247,6 +253,16 @@ void interrupt isr(void)
         }
 
     }
+    else if (TMR1IF)
+    {
+        TMR1IF = 0;
+        TMR1 = 0xBE3;
+        if (++t1_times == 20) 
+        {
+            t1_times = 0;
+            countdown--;
+        }
+    }
     else if (ADIF)
     {
         ad_result = ADRES;
@@ -303,15 +319,20 @@ void interrupt isr(void)
 void main(void)
 {
     uint8_t digits_entered;
+    uint8_t pin_digit;
     uint8_t count = 0;
 
     init();
     InitLCD();
 
-    state = PS_PINSETTING;
+    state = PS_INITIAL;
     
-    for (;;) {
-        switch (state) {
+    for (;;)
+    {
+main_loop_init:
+
+        switch (state)
+        {
             case PS_INITIAL:
                 ClearLCDScreen();
                 WriteCommandToLCD(0x80); // Goto to the beginning of the first line
@@ -353,7 +374,6 @@ void main(void)
 
                 pot_last = ad_result;
 
-                uint8_t pin_digit;
                 while (digits_entered < 3)
                 {
                     if (promise_change_digit && !should_blink)
@@ -491,15 +511,215 @@ void main(void)
                 break;
 
             case PS_TEST:
-                break;
+                T1CON |= 1;
+                attempts = 3;
+
+pintest_attempt:
+                ClearLCDScreen();
+                WriteCommandToLCD(0x80);
+                WriteStringToLCD(" Enter pin:#### ");
+                WriteCommandToLCD(0xC0);
+                WriteStringToLCD("  Attempts:");
+                WriteCommandToLCD(0xC0 + sizeof("  Attempts:") - 1);
+                WriteDataToLCD(get_lcd_repr(attempts));
+                WriteStringToLCD("    ");
+
+                RBIE = 1;
+                should_blink = 1;
+                pound = 1;
+                pot_last = ad_result;
+
+                digits_entered = 0;
+                while (digits_entered < 3)
+                {
+                    if (countdown <= 0)
+                    {
+                        state = PS_FAILURE;
+
+                        goto main_loop_init;
+                    }
+
+                    zeg_number(countdown);
+                    if (promise_change_digit && !should_blink)
+                    {
+                        promise_change_digit = 0;
+                        promise_can_promise = 0;
+
+                        should_blink = 1;
+                        pound = 1;
+
+                        input_pin[digits_entered++] = pin_digit;
+
+                        continue;
+                    }
+
+                    if (pot_updated())
+                    {
+                        promise_can_promise = 1;
+
+                        pin_digit = normalize_ad(ad_result);
+                        should_blink = 0;
+                        WriteCommandToLCD(0x80 + sizeof(" Enter pin:") - 1 + digits_entered);
+                        WriteDataToLCD(get_lcd_repr(pin_digit));
+                        pot_last = ad_result;
+                    }
+
+                    if (t0_times == 50)
+                    {
+                        t0_times = 0;
+
+                        WriteCommandToLCD(0x80 + sizeof(" Enter pin:") - 1 + digits_entered);
+
+                        if (should_blink)
+                        {
+                            pound = !pound;
+
+                            if (pound)
+                            {
+                                WriteStringToLCD("#");
+                            }
+                            else
+                            {
+                                WriteStringToLCD(" ");
+                            }
+                        }
+                    }
+                }
+
+                pot_last = ad_result;
+                promise_pin_confirmed = 0;
+
+                while (digits_entered != 4)
+                {
+                    zeg_number(countdown);
+
+                    if (countdown <= 0)
+                    {
+                        state = PS_FAILURE;
+
+                        goto main_loop_init;
+                    }
+
+                    if (promise_pin_confirmed)
+                    {
+                        promise_pin_confirmed = 0;
+                        input_pin[digits_entered++] = pin_digit;
+                    }
+
+                    if (pot_updated())
+                    {
+                        promise_can_promise = 1;
+
+                        pin_digit = normalize_ad(ad_result);
+                        should_blink = 0;
+                        WriteCommandToLCD(0x80 + sizeof(" Enter pin:") - 1 + digits_entered);
+                        WriteDataToLCD(get_lcd_repr(pin_digit));
+                        pot_last = ad_result;
+                    }
+
+                    if (t0_times == 50)
+                    {
+                        t0_times = 0;
+
+                        WriteCommandToLCD(0x80 + sizeof(" Enter pin:") - 1 + digits_entered);
+
+                        if (should_blink)
+                        {
+                            pound = !pound;
+
+                            if (pound)
+                            {
+                                WriteStringToLCD("#");
+                            }
+                            else
+                            {
+                                WriteStringToLCD(" ");
+                            }
+                        }
+                    }
+                }
+
+                if (pin[0] == input_pin[0] &&
+                    pin[1] == input_pin[1] &&
+                    pin[2] == input_pin[2] &&
+                    pin[3] == input_pin[3])
+                {
+                    RBIE = 0;
+                    state = PS_SUCCESS;
+
+                    continue;
+                }
+                else
+                {
+                    attempts--;
+
+                    if (!attempts)
+                    {
+                        state = PS_TARPIT;
+                        RBIE = 0;
+
+                        continue;
+                    }
+
+                    WriteCommandToLCD(0x80);
+                    WriteStringToLCD(" Enter pin:#### ");
+                    WriteCommandToLCD(0xC0 + sizeof("  Attempts:") - 1);
+                    WriteDataToLCD(get_lcd_repr(attempts));
+                    WriteStringToLCD("    ");
+
+                    goto pintest_attempt;
+                }
+
 
             case PS_TARPIT:
+                countdown_snapshot = countdown;
+
+                ClearLCDScreen();
+                WriteCommandToLCD(0x80);
+                WriteStringToLCD(" Enter pin:XXXX ");
+                WriteCommandToLCD(0xC0);
+                WriteStringToLCD("Try after 20sec.");
+
+                while (1)
+                {
+                    if (countdown <= 0)
+                    {
+                        state = PS_FAILURE;
+
+                        goto main_loop_init;
+                    }
+
+                    if (countdown == countdown_snapshot - 20)
+                    {
+                        state = PS_TEST;
+
+                        goto main_loop_init;
+                    }
+
+                    zeg_number(countdown);
+                }
+
                 break;
 
             case PS_SUCCESS:
+                ClearLCDScreen();
+                WriteCommandToLCD(0x80);
+                WriteStringToLCD("Safe is opening!");
+                WriteCommandToLCD(0xC0);
+                WriteStringToLCD("$$$$$$$$$$$$$$$$");
+
+                /* Disable Timer1 */
+                T1CON &= ~1;
+
+                while (1)
+                {
+                    zeg_number(countdown);
+                }
+
                 break;
 
             case PS_FAILURE:
+                RESET();
                 break;
         }
     }
