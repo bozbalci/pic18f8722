@@ -528,6 +528,8 @@ pintest_attempt:
                 pot_last = ad_result;
 
                 digits_entered = 0;
+
+                promise_change_digit = 0;
                 while (digits_entered < 3)
                 {
                     if (countdown <= 0)
