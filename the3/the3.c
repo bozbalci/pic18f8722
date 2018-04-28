@@ -344,13 +344,11 @@ main_loop_init:
                 break;
 
             case PS_RE1WAIT:
-#ifndef DEBUG
                 while (!PORTEbits.RE1)
                     ;
                 /* FIXME: Button release waiting */
                 while (PORTEbits.RE1)
                     ;
-#endif
 
                 state = PS_DELAY;
                 break;
