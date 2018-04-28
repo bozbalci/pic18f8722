@@ -69,6 +69,16 @@ void sfssdu(void)
     }
 }
 
+void zeg_clear(void)
+{
+    PORTJ = 0;
+    PORTH = 8;
+    do
+    {
+        ;
+    } while (PORTH >>= 1);
+}
+
 void zeg_dashes(void)
 {
     PORTJ = 1 << 6;
@@ -78,6 +88,61 @@ void zeg_dashes(void)
     {
         sfssdu();
     } while (PORTH >>= 1);
+}
+
+int8_t get_zeg_repr(int8_t digit)
+{
+    switch (digit)
+    {
+        case 0:
+            return 0b00111111;
+        case 1:
+            return 0b00000110;
+        case 2:
+            return 0b01011011;
+        case 3:
+            return 0b01001111;
+        case 4:
+            return 0b01100110;
+        case 5:
+            return 0b01101101;
+        case 6:
+            return 0b01111101;
+        case 7:
+            return 0b00000111;
+        case 8:
+            return 0b01111111;
+        case 9:
+            return 0b01100111;
+    }
+}
+
+void zeg_number(int8_t num)
+{
+    PORTH = 1;
+    PORTJ = get_zeg_repr(0);
+    sfssdu();
+
+    PORTH = 2;
+    if (num >= 100)
+    {
+        PORTJ = get_zeg_repr(1);
+    }
+    else
+    {
+        PORTJ = get_zeg_repr(0);
+    }
+    sfssdu();
+
+    num %= 100;
+    PORTH = 4;
+    PORTJ = get_zeg_repr(num / 10);
+    sfssdu();
+
+    num %= 10;
+    PORTH = 8;
+    PORTJ = get_zeg_repr(num);
+    sfssdu();
 }
 
 void init(void)
@@ -238,6 +303,7 @@ void interrupt isr(void)
 void main(void)
 {
     uint8_t digits_entered;
+    uint8_t count = 0;
 
     init();
     InitLCD();
@@ -386,22 +452,40 @@ void main(void)
 
                 RBIE = 0;
 
+                zeg_clear();
+
                 state = PS_PINSET;
                 break;
 
             case PS_PINSET:
-                ClearLCDScreen();
-                WriteCommandToLCD(0x80);
-                WriteStringToLCD(" The new pin is ");
-                WriteCommandToLCD(0xC0);
-                WriteStringToLCD("   ---");
-                WriteDataToLCD(get_lcd_repr(pin[0]));
-                WriteDataToLCD(get_lcd_repr(pin[1]));
-                WriteDataToLCD(get_lcd_repr(pin[2]));
-                WriteDataToLCD(get_lcd_repr(pin[3]));
-                WriteStringToLCD("---   ");
+                t0_times = 0;
+                
+                while (count < 6)
+                {
+                    if (t0_times == 100)
+                    {
+                        t0_times = 0;
+                        count++;
 
-                delay_3s();
+                        if (count % 2)
+                        {
+                            ClearLCDScreen();
+                            WriteCommandToLCD(0x80);
+                            WriteStringToLCD(" The new pin is ");
+                            WriteCommandToLCD(0xC0);
+                            WriteStringToLCD("   ---");
+                            WriteDataToLCD(get_lcd_repr(pin[0]));
+                            WriteDataToLCD(get_lcd_repr(pin[1]));
+                            WriteDataToLCD(get_lcd_repr(pin[2]));
+                            WriteDataToLCD(get_lcd_repr(pin[3]));
+                            WriteStringToLCD("---   ");
+                        }
+                        else
+                        {
+                            ClearLCDScreen();
+                        }
+                    }
+                }
 
                 state = PS_TEST;
                 break;
