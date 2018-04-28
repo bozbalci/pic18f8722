@@ -90,9 +90,8 @@ void init(void)
 
     TRISE = 1 << 1;
 
-    /* Configuration for the 7-segment display */
     TRISJ = 0;
-    TRISH = 0;
+    TRISH = 0b00010000;
     PORTJ = 0;
     PORTH = 0;
 
@@ -115,7 +114,7 @@ void init(void)
     ADCON1 = 0b00000000;
 
     /* ADFM = Right justified, ACQT = 2 Tad, ADCS = 64 Tosc */
-    ADCON2 = 0b10001110;
+    ADCON2 = 0b10000010;
 
     ADIF = 0;
     ADIE = 1;
@@ -183,15 +182,7 @@ void interrupt isr(void)
     }
     else if (ADIF)
     {
-        if (!ADCON0bits.DONE)
-            // This should never happen!
-            ;
-
-        int16_t high = ADRESH, low = ADRESL;
-        high <<= 8;
-        
-        ad_result = high | low;
-        
+        ad_result = ADRES;
         ADIF = 0;
     }
     else if (RBIF)
@@ -282,15 +273,10 @@ void main(void)
                 should_blink = 1;
                 pound = 1;
 
-                pot_last = ad_result;
-
                 while (digits_entered < 3)
                 {
                     if (promise_change_digit && !should_blink)
                     {
-                        /* Commit change_digit and release the promise. */
-                        pot_last = ad_result;
-
                         promise_change_digit = 0;
 
                         should_blink = 1;
@@ -304,19 +290,6 @@ void main(void)
                         continue;
                     }
 
-                    if (pot_updated())
-                    {
-                        char val;
-                        uint8_t normalized;
-
-                        normalized = normalize_ad(ad_result);
-                        val = get_lcd_repr(normalized);
-
-                        WriteCommandToLCD(0x80 + sizeof(" Set a pin:") - 1 + digits_entered);
-                        WriteDataToLCD(val);
-
-                        should_blink = 0;
-                    }
 
                     zeg_dashes();
 
