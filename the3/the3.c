@@ -41,13 +41,15 @@ typedef enum
 ProgramState state;
 
 volatile uint8_t t0_times, adc_counter;
-volatile uint8_t promise_change_digit, promise_pin_confirmed;
+volatile uint8_t promise_change_digit, promise_pin_confirmed, promise_can_promise;
 volatile uint8_t rb6_pressed, rb7_pressed;
 
 volatile int16_t ad_result;
 int16_t pot_last;
 
 uint8_t should_blink, pound;
+
+uint8_t pin[4];
 
 uint8_t pot_updated(void)
 {
@@ -173,7 +175,7 @@ void interrupt isr(void)
 
         /* Count for ADC only if we're in the stage of setting the PIN,
            i.e. analog inputs are required. */
-        if (state == PS_PINSETTING && ++adc_counter == 20)
+        if (++adc_counter == 20)
         {
             adc_counter = 0;
             ADCON0bits.GO = 1;
@@ -199,11 +201,21 @@ void interrupt isr(void)
 
         RBIF = 0;
 
+        if (rb6_pressed && !promise_can_promise)
+        {
+            rb6_pressed = 0;
+        }
+
+        if (rb7_pressed && !promise_can_promise)
+        {
+            rb7_pressed = 0;
+        }
+
         if (!PORTBbits.RB6)
         {
             rb6_pressed = 1;
         }
-        else if (rb6_pressed)
+        else if (rb6_pressed && promise_can_promise)
         {
             promise_change_digit = 1;
             rb6_pressed = 0;
@@ -213,7 +225,7 @@ void interrupt isr(void)
         {
             rb7_pressed = 1;
         }
-        else if (rb7_pressed)
+        else if (rb7_pressed && promise_can_promise)
         {
             promise_pin_confirmed = 1;
             rb7_pressed = 0;
@@ -273,23 +285,34 @@ void main(void)
                 should_blink = 1;
                 pound = 1;
 
+                pot_last = ad_result;
+
+                uint8_t pin_digit;
                 while (digits_entered < 3)
                 {
                     if (promise_change_digit && !should_blink)
                     {
                         promise_change_digit = 0;
+                        promise_can_promise = 0;
 
                         should_blink = 1;
                         pound = 1;
 
-                        WriteCommandToLCD(0x80 + sizeof(" Set a pin:") - 1 + digits_entered);
-                        WriteStringToLCD("#");
-
-                        digits_entered++;
+                        pin[digits_entered++] = pin_digit;
 
                         continue;
                     }
 
+                    if (pot_updated())
+                    {
+                        promise_can_promise = 1;
+
+                        pin_digit = normalize_ad(ad_result);
+                        should_blink = 0;
+                        WriteCommandToLCD(0x80 + sizeof(" Set a pin:") - 1 + digits_entered);
+                        WriteDataToLCD(get_lcd_repr(pin_digit));
+                        pot_last = ad_result;
+                    }
 
                     zeg_dashes();
 
@@ -315,12 +338,26 @@ void main(void)
                     }
                 }
 
+                pot_last = ad_result;
+                promise_pin_confirmed = 0;
+
                 while (digits_entered != 4)
                 {
                     if (promise_pin_confirmed)
                     {
                         promise_pin_confirmed = 0;
-                        digits_entered++;
+                        pin[digits_entered++] = pin_digit;
+                    }
+
+                    if (pot_updated())
+                    {
+                        promise_can_promise = 1;
+
+                        pin_digit = normalize_ad(ad_result);
+                        should_blink = 0;
+                        WriteCommandToLCD(0x80 + sizeof(" Set a pin:") - 1 + digits_entered);
+                        WriteDataToLCD(get_lcd_repr(pin_digit));
+                        pot_last = ad_result;
                     }
 
                     zeg_dashes();
@@ -355,7 +392,16 @@ void main(void)
             case PS_PINSET:
                 ClearLCDScreen();
                 WriteCommandToLCD(0x80);
-                WriteStringToLCD("HASSAS TARTI");
+                WriteStringToLCD(" The new pin is ");
+                WriteCommandToLCD(0xC0);
+                WriteStringToLCD("   ---");
+                WriteDataToLCD(get_lcd_repr(pin[0]));
+                WriteDataToLCD(get_lcd_repr(pin[1]));
+                WriteDataToLCD(get_lcd_repr(pin[2]));
+                WriteDataToLCD(get_lcd_repr(pin[3]));
+                WriteStringToLCD("---   ");
+
+                delay_3s();
 
                 state = PS_TEST;
                 break;
