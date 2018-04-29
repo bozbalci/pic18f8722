@@ -51,8 +51,7 @@ typedef enum
     PS_FAILURE
 } ProgramState;
 
-// TODO The program state should probably not be volatile? It's not being used in ISRs
-volatile ProgramState state;
+ProgramState state;
 
 volatile uint8_t t0_times; // Number of Timer0 interrupts handled
 volatile uint8_t t1_times; // Number of Timer1 interrupts handled
