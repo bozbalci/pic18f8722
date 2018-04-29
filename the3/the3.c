@@ -560,8 +560,6 @@ void main(void)
     
     for (;;)
     {
-main_loop_init:
-
         switch (state)
         {
             case PS_INITIAL:
@@ -638,7 +636,7 @@ main_loop_init:
 
             case PS_PINSET:
                 t0_times = 0;
-                
+
                 while (pinset_blink_count < 6)
                 {
                     if (t0_times >= 100)
@@ -682,18 +680,13 @@ main_loop_init:
 
                 ps_attempt_init();
 
-                while (digits_entered < 3)
+                while (countdown > 0 && digits_entered != 4)
                 {
-                    if (countdown <= 0)
-                    {
-                        state = PS_FAILURE;
-
-                        goto main_loop_init;
-                    }
-
                     zeg_number(countdown);
+                    handle_pot_update();
+                    handle_pound_blink();
 
-                    if (promise_change_digit && !should_blink)
+                    if (digits_entered < 3 && promise_change_digit)
                     {
                         promise_change_digit = 0;
                         promise_can_promise = 0;
@@ -703,68 +696,44 @@ main_loop_init:
 
                         input_pin[digits_entered++] = pin_digit;
 
-                        continue;
+                        pot_last = ad_result;
+                        /* Invalidating the promise is required in order to prevent the use
+                         * of a dangling promise that is given incorrectly if
+                         * RB7 is pressed while setting the first three digits.
+                         */
+                        promise_pin_confirmed = 0;
                     }
-
-                    handle_pot_update();
-
-                    handle_pound_blink();
-                }
-
-                pot_last = ad_result;
-                /* Invalidating the promise is required in order to prevent the use
-                 * of a dangling promise that is given incorrectly if
-                 * RB7 is pressed while setting the first three digits.
-                 */
-                promise_pin_confirmed = 0;
-
-                while (digits_entered != 4)
-                {
-                    zeg_number(countdown);
-
-                    if (countdown <= 0)
-                    {
-                        state = PS_FAILURE;
-
-                        goto main_loop_init;
-                    }
-
-                    if (promise_pin_confirmed)
+                    else if (digits_entered == 3 && promise_pin_confirmed)
                     {
                         promise_pin_confirmed = 0;
                         input_pin[digits_entered++] = pin_digit;
                     }
-
-                    handle_pot_update();
-
-                    handle_pound_blink();
                 }
 
-                /* If the pin is entered correctly, go to the success state.
-                 */
-                if (pin[0] == input_pin[0] &&
-                    pin[1] == input_pin[1] &&
-                    pin[2] == input_pin[2] &&
-                    pin[3] == input_pin[3])
+                if (digits_entered == 4)
                 {
-                    RBIE = 0;
-                    state = PS_SUCCESS;
-                }
-                /* Otherwise, decrement attempts and go to the test state or
-                 * the tarpit state as necessary.
-                 */
-                else
-                {
-                    attempts--;
-                    if (!attempts)
+                    /* If the pin is entered correctly, go to the success state.
+                    */
+                    if (pin[0] == input_pin[0] &&
+                            pin[1] == input_pin[1] &&
+                            pin[2] == input_pin[2] &&
+                            pin[3] == input_pin[3])
+                    {
+                        RBIE = 0;
+                        state = PS_SUCCESS;
+                    }
+                    /* Otherwise, decrement attempts and go to the test state or
+                     * the tarpit state as necessary.
+                     */
+                    else if (--attempts == 0)
                     {
                         state = PS_TARPIT;
                         RBIE = 0;
                     }
-                    else
-                    {
-                        state = PS_ATTEMPT;
-                    }
+                }
+                else /* if (countdown <= 0) */
+                {
+                    state = PS_FAILURE;
                 }
 
                 break;
