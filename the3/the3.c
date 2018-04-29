@@ -585,48 +585,37 @@ void main(void)
 
                 ps_pinsetting_init();
 
-                while (digits_entered < 3)
-                {
-                    if (promise_change_digit && !should_blink)
-                    {
-                        promise_change_digit = 0;
-                        promise_can_promise = 0;
-
-                        should_blink = 1;
-                        pound = 1;
-
-                        pin[digits_entered++] = pin_digit;
-
-                        continue;
-                    }
-
-                    handle_pot_update();
-
-                    zeg_dashes();
-
-                    handle_pound_blink();
-                }
-
-                pot_last = ad_result;
-                /* Invalidating the promise is required in order to prevent the use
-                 * of a dangling promise that is given incorrectly if
-                 * RB7 is pressed while setting the first three digits.
-                 */
-                promise_pin_confirmed = 0;
-
                 while (digits_entered != 4)
                 {
-                    if (promise_pin_confirmed)
+                    zeg_dashes();
+                    handle_pot_update();
+                    handle_pound_blink();
+
+                    if (digits_entered < 3)
+                    {
+                        if (promise_change_digit)
+                        {
+                            promise_change_digit = 0;
+                            promise_can_promise = 0;
+
+                            should_blink = 1;
+                            pound = 1;
+
+                            pin[digits_entered++] = pin_digit;
+
+                            pot_last = ad_result;
+                            /* Invalidating the promise is required in order to prevent the use
+                             * of a dangling promise that is given incorrectly if
+                             * RB7 is pressed while setting the first three digits.
+                             */
+                            promise_pin_confirmed = 0;
+                        }
+                    }
+                    else if (promise_pin_confirmed) /* && digits_entered == 3 */
                     {
                         promise_pin_confirmed = 0;
                         pin[digits_entered++] = pin_digit;
                     }
-
-                    handle_pot_update();
-
-                    zeg_dashes();
-
-                    handle_pound_blink();
                 }
 
                 ps_pinsetting_exit();
@@ -686,24 +675,27 @@ void main(void)
                     handle_pot_update();
                     handle_pound_blink();
 
-                    if (digits_entered < 3 && promise_change_digit)
+                    if (digits_entered < 3)
                     {
-                        promise_change_digit = 0;
-                        promise_can_promise = 0;
+                        if (promise_change_digit)
+                        {
+                            promise_change_digit = 0;
+                            promise_can_promise = 0;
 
-                        should_blink = 1;
-                        pound = 1;
+                            should_blink = 1;
+                            pound = 1;
 
-                        input_pin[digits_entered++] = pin_digit;
+                            input_pin[digits_entered++] = pin_digit;
 
-                        pot_last = ad_result;
-                        /* Invalidating the promise is required in order to prevent the use
-                         * of a dangling promise that is given incorrectly if
-                         * RB7 is pressed while setting the first three digits.
-                         */
-                        promise_pin_confirmed = 0;
+                            pot_last = ad_result;
+                            /* Invalidating the promise is required in order to prevent the use
+                             * of a dangling promise that is given incorrectly if
+                             * RB7 is pressed while setting the first three digits.
+                             */
+                            promise_pin_confirmed = 0;
+                        }
                     }
-                    else if (digits_entered == 3 && promise_pin_confirmed)
+                    else if (promise_pin_confirmed) /* digits_entered == 3 */
                     {
                         promise_pin_confirmed = 0;
                         input_pin[digits_entered++] = pin_digit;
