@@ -500,7 +500,7 @@ main_loop_init:
 
                     zeg_dashes();
 
-                    if (t0_times == 50)
+                    if (t0_times >= 50)
                     {
                         t0_times = 0;
 
@@ -546,7 +546,7 @@ main_loop_init:
 
                     zeg_dashes();
 
-                    if (t0_times == 50)
+                    if (t0_times >= 50)
                     {
                         t0_times = 0;
 
@@ -580,7 +580,7 @@ main_loop_init:
                 
                 while (count < 6)
                 {
-                    if (t0_times == 100)
+                    if (t0_times >= 100)
                     {
                         t0_times = 0;
                         count++;
@@ -664,7 +664,7 @@ pintest_attempt:
                         pot_last = ad_result;
                     }
 
-                    if (t0_times == 50)
+                    if (t0_times >= 50)
                     {
                         t0_times = 0;
 
@@ -717,7 +717,7 @@ pintest_attempt:
                         pot_last = ad_result;
                     }
 
-                    if (t0_times == 50)
+                    if (t0_times >= 50)
                     {
                         t0_times = 0;
 
