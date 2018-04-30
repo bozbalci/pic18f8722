@@ -505,6 +505,7 @@ void ps_attempt_init(void)
 
     digits_entered = 0;
 
+    promise_can_promise = 0;
     // Invalidating the promise is required in order to prevent the commit
     // of a dangling promise that is given incorrectly if
     // RB6 is pressed while setting the last digit.
