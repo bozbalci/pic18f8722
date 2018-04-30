@@ -7,7 +7,6 @@
  * Yağmur Oymak 2171783
  * Berk Özbalcı 2171791
  *
- * TODO: Clear out TODOs!
  */
 
 #pragma config OSC = HSPLL, FCMEN = OFF, IESO = OFF
@@ -120,7 +119,6 @@ uint8_t pot_updated(void)
 // on the seven segment display with a tolerable level of flickering.
 void sfssdu(void)
 { 
-    // TODO Maybe this is better implemented as a preprocessor macro.
     uint16_t i = 1023;
 
     while (i)
@@ -262,60 +260,62 @@ int8_t normalize_ad(int16_t ad)
 // the LCD screen.
 char get_lcd_repr(int8_t val)
 {
-    // TODO Maybe this is better implemented as a preprocessor macro.
-    
     return '0' + val;
 }
 
 void init(void)
 {
-    // TODO Comment and organize this mess
-    
+    // Set RA[5:0] as inputs, required for the ADC module
     TRISA = 0b00111111;
     PORTA = 0;
-    // Configure RB7 and RB6 as inputs, the rest of the PORTB is unused.
+
+    // Set RB7 and RB6 as inputs, used as buttons in pin setting and test states
     TRISB = 0b11000000;
     PORTB = 0;
 
+    // Set RE1 as input, used as a button in the initial state
+    TRISE = 0b00000010;
     PORTE = 0;
 
-    TRISE = 1 << 1;
-
+    // Set PORTJ as output, required for 7-segment display
     TRISJ = 0;
-    TRISH = 0b00010000;
     PORTJ = 0;
+
+    // Set PORTH as output, except for RH4, which is an input to the ADC module.
+    // The rest of PORTH is required to be outputs for the 7-segment display.
+    TRISH = 0b00010000;
     PORTH = 0;
 
+    // Interrupt configuration
     INTCON = 0;
     INTCON2 = 0;
 
-    /* Timer0 config */
+    //  Timer0 configuration, period = 5 ms, prescale = 256, 8-bits
     TMR0L = T0_5MS_INITIAL;
     T0CON = 0;
     TMR0ON = 1;
     T08BIT = 1;
     T0CON |= 0b111;
-
-    /* Timer1 config */
-    T1CON = 0b10110000;
-    TMR1IE = 1;
-    TMR1 = 0xBE3;
-
     TMR0IE = 1;
+
+    // Timer1 configuration, period = 50 ms, prescale = 8, 16-bits RW
+    T1CON = 0b10110000;
+    TMR1 = T1_50MS_INITIAL;
+    TMR1IE = 1;
+
+    // PORTB pull-up configuration
     RBPU = 0;
 
-    /* Channel = 12, GO/DONE = 0, ADON = 1 */
-    ADCON0 = 0b00110001;
+    // ADC module initialization
+    ADCON0 = 0b00110001; // Channel = 12, GO/DONE = 0, ADON = 1
+    ADCON1 = 0b00000000; // Voltage Reference = AVdd, AVss and PCFG = Analog
+    ADCON2 = 0b10000010; // ADFM = Right justified, ACQT = 0 Tad, ADCS = 32 Tosc
 
-    /* Voltage Reference = AVdd, AVss and PCFG = Analog */
-    ADCON1 = 0b00000000;
-
-    /* ADFM = Right justified, ACQT = 2 Tad, ADCS = 64 Tosc */
-    ADCON2 = 0b10000010;
-
+    // Configure ADC interrupt
     ADIF = 0;
     ADIE = 1;
 
+    // Enable all interrupts
     PEIE = 1;
     ei();
 }
@@ -420,15 +420,7 @@ void interrupt isr(void)
     }
 }
 
-void lcd_initial(void)
-{
-    ClearLCDScreen();
-    WriteCommandToLCD(0x80); // Goto to the beginning of the first line
-    WriteStringToLCD(" $>Very  Safe<$ ");
-    WriteCommandToLCD(0xC0); // Goto to the beginning of the second line
-    WriteStringToLCD(" $$$$$$$$$$$$$$ ");
-}
-
+// This function does not return until RE1 has been pressed and released.
 void re1_wait(void)
 {
     while (PORTEbits.RE1)
@@ -437,13 +429,8 @@ void re1_wait(void)
         ;
 }
 
-void lcd_enter_pin(void)
-{
-    ClearLCDScreen();
-    WriteCommandToLCD(0x80);
-    WriteStringToLCD(" Set a pin:#### ");
-}
-
+// Writes a digit to its appropriate position if the potentiometer value
+// was changed since the last call of this function.
 void handle_pot_update(void)
 {
     if (pot_updated())
@@ -458,15 +445,16 @@ void handle_pot_update(void)
     }
 }
 
+// Causes the pound symbol to blink every 250 ms while entering a pin and
+// no digit has been set for the currently selected digit.
 void handle_pound_blink(void)
 {
     if (t0_times >= 50)
     {
         t0_times = 0;
 
-        /* Note that sizeof(" Set a pin:") == sizeof(" Enter pin:").
-         * So this code is usable in PS_TEST as well.
-         */
+        // Note that sizeof(" Set a pin:") == sizeof(" Enter pin:").
+        // So this code is usable in PS_TEST as well.
         WriteCommandToLCD(0x80 + sizeof(" Set a pin:") - 1 + digits_entered);
 
         if (should_blink)
@@ -485,6 +473,8 @@ void handle_pound_blink(void)
     }
 }
 
+// Initializes the pin setting state, by setting some variables and
+// enabling the PORTB change interrupt.
 void ps_pinsetting_init(void)
 {
     digits_entered = 0;
@@ -497,6 +487,7 @@ void ps_pinsetting_init(void)
     RBIE = 1;
 }
 
+// Finalizes the pin setting state.
 void ps_pinsetting_exit(void)
 {
     RBIE = 0;
@@ -504,6 +495,7 @@ void ps_pinsetting_exit(void)
     zeg_clear();
 }
 
+// Similar to ps_pinsetting_init, initializes the attempt state.
 void ps_attempt_init(void)
 {
     RBIE = 1;
@@ -513,11 +505,36 @@ void ps_attempt_init(void)
 
     digits_entered = 0;
 
-    /* Invalidating the promise is required in order to prevent the commit
-     * of a dangling promise that is given incorrectly if
-     * RB6 is pressed while setting the last digit.
-     */
+    // Invalidating the promise is required in order to prevent the commit
+    // of a dangling promise that is given incorrectly if
+    // RB6 is pressed while setting the last digit.
     promise_change_digit = 0;
+}
+
+// Returns true if pin contains the same digits as input_pin, false
+// otherwise.
+int8_t pin_correct(void)
+{
+    return pin[0] == input_pin[0] &&
+           pin[1] == input_pin[1] &&
+           pin[2] == input_pin[2] &&
+           pin[3] == input_pin[3];
+}
+
+void lcd_initial(void)
+{
+    ClearLCDScreen();
+    WriteCommandToLCD(0x80);
+    WriteStringToLCD(" $>Very  Safe<$ ");
+    WriteCommandToLCD(0xC0);
+    WriteStringToLCD(" $$$$$$$$$$$$$$ ");
+}
+
+void lcd_enter_pin(void)
+{
+    ClearLCDScreen();
+    WriteCommandToLCD(0x80);
+    WriteStringToLCD(" Set a pin:#### ");
 }
 
 void lcd_attempt(void)
@@ -550,9 +567,37 @@ void lcd_success(void)
     WriteStringToLCD("$$$$$$$$$$$$$$$$");
 }
 
+void lcd_new_pin(void)
+{
+    ClearLCDScreen();
+    WriteCommandToLCD(0x80);
+    WriteStringToLCD(" The new pin is ");
+    WriteCommandToLCD(0xC0);
+    WriteStringToLCD("   ---");
+    WriteDataToLCD(get_lcd_repr(pin[0]));
+    WriteDataToLCD(get_lcd_repr(pin[1]));
+    WriteDataToLCD(get_lcd_repr(pin[2]));
+    WriteDataToLCD(get_lcd_repr(pin[3]));
+    WriteStringToLCD("---   ");
+}
+
+void lcd_clear(void)
+{
+    ClearLCDScreen();
+}
+
+void lcd_designers(void)
+{
+    ClearLCDScreen();
+
+    WriteCommandToLCD(0x80);
+    WriteStringToLCD("2171783");
+    WriteCommandToLCD(0xC0);
+    WriteStringToLCD("2171791");
+}
+
 void main(void)
 {
-    // TODO Comment and organize this
     init();
     InitLCD();
 
@@ -560,26 +605,38 @@ void main(void)
     
     for (;;)
     {
+        // The main loop is a state machine. The initial state is PS_INITIAL,
+        // and the final states are PS_SUCCESS and PS_FAILURE. Upon program
+        // restart, we fall back to the initial state.
         switch (state)
         {
+            // Displays the welcoming message on the LCD and proceeds to the
+            // next state.
             case PS_INITIAL:
                 lcd_initial();
 
                 state = PS_RE1WAIT;
                 break;
 
+            // Waits for the press and release actions of RE1, and then
+            // proceeds to the next state.
             case PS_RE1WAIT:
                 re1_wait();
 
                 state = PS_DELAY;
                 break;
 
+            // Produces a three second delay and then proceeds to the next state.
             case PS_DELAY:
                 delay_3s();
 
                 state = PS_PINSETTING;
                 break;
 
+            // Displays a message on the LCD indicating we are accepting a PIN.
+            // Continuously updates as new values from the potentiometer is
+            // delivered to ad_result, and waits for RB6 and RB7 depending on
+            // how many digits have been inputted.
             case PS_PINSETTING:
                 lcd_enter_pin();
 
@@ -604,10 +661,9 @@ void main(void)
                             pin[digits_entered++] = pin_digit;
 
                             pot_last = ad_result;
-                            /* Invalidating the promise is required in order to prevent the use
-                             * of a dangling promise that is given incorrectly if
-                             * RB7 is pressed while setting the first three digits.
-                             */
+                            // Invalidating the promise is required in order to prevent the use
+                            // of a dangling promise that is given incorrectly if
+                            // RB7 is pressed while setting the first three digits.
                             promise_pin_confirmed = 0;
                         }
                     }
@@ -635,20 +691,11 @@ void main(void)
 
                         if (pinset_blink_count % 2)
                         {
-                            ClearLCDScreen();
-                            WriteCommandToLCD(0x80);
-                            WriteStringToLCD(" The new pin is ");
-                            WriteCommandToLCD(0xC0);
-                            WriteStringToLCD("   ---");
-                            WriteDataToLCD(get_lcd_repr(pin[0]));
-                            WriteDataToLCD(get_lcd_repr(pin[1]));
-                            WriteDataToLCD(get_lcd_repr(pin[2]));
-                            WriteDataToLCD(get_lcd_repr(pin[3]));
-                            WriteStringToLCD("---   ");
+                            lcd_new_pin();
                         }
                         else
                         {
-                            ClearLCDScreen();
+                            lcd_clear();
                         }
                     }
                 }
@@ -688,10 +735,9 @@ void main(void)
                             input_pin[digits_entered++] = pin_digit;
 
                             pot_last = ad_result;
-                            /* Invalidating the promise is required in order to prevent the use
-                             * of a dangling promise that is given incorrectly if
-                             * RB7 is pressed while setting the first three digits.
-                             */
+                            // Invalidating the promise is required in order to prevent the use
+                            // of a dangling promise that is given incorrectly if
+                            // RB7 is pressed while setting the first three digits.
                             promise_pin_confirmed = 0;
                         }
                     }
@@ -704,19 +750,14 @@ void main(void)
 
                 if (digits_entered == 4)
                 {
-                    /* If the pin is entered correctly, go to the success state.
-                    */
-                    if (pin[0] == input_pin[0] &&
-                            pin[1] == input_pin[1] &&
-                            pin[2] == input_pin[2] &&
-                            pin[3] == input_pin[3])
+                    // If the pin is entered correctly, go to the success state.
+                    if (pin_correct())
                     {
                         RBIE = 0;
                         state = PS_SUCCESS;
                     }
-                    /* Otherwise, decrement attempts and go to the test state or
-                     * the tarpit state as necessary.
-                     */
+                    // Otherwise, decrement attempts and go to the test state or
+                    // the tarpit state as necessary.
                     else if (--attempts == 0)
                     {
                         state = PS_TARPIT;
@@ -730,7 +771,10 @@ void main(void)
 
                 break;
 
-
+            // The tarpit state discards all inputs from the user and counts down
+            // from the tarpit period, which is specified as 20 seconds. During
+            // this period, the global countdown may reach zero and the program
+            // may enter the failure state (PS_FAILURE).
             case PS_TARPIT:
                 countdown_snapshot = countdown;
 
@@ -752,6 +796,9 @@ void main(void)
 
                 break;
 
+            // The success state displays the success message and then enters
+            // an infinite loop, while displaying the remaining seconds on the
+            // 7-segment display.
             case PS_SUCCESS:
                 lcd_success();
 
@@ -765,10 +812,26 @@ void main(void)
 
                 break;
 
+            // The failure state immediately resets the entire program.
             case PS_FAILURE:
                 RESET();
 
                 break;
+
+            // Here's a little easter egg for you. Open up your debugger and
+            // set the state to PS_FAILURE + 1.
+            default:
+                lcd_designers();
+                delay_3s();
+                RESET();
+
+                break;
+
+            // This is the end of the main loop. We have switched over a
+            // exhaustive set of mutually disjoint states. There are no
+            // other states, and well... we think there's nothing more to
+            // say. What happens from now on? Well... we're really not
+            // at liberty to.. uhm... say.
         }
     }
 }
