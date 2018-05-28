@@ -1,26 +1,32 @@
 #include "common.h"
 
-char systemState = _WAITING;    // state of the system; _WAITING or _OPERATING
-char transmitBuffer[256];       // holds the bytes to be transmitted
-char transmitCount;             // index to the transmitBuffer array
+enum state_enum sim_state = STATE_IDLE;
+
+unsigned char send_buf[256];       // holds the bytes to be transmitted
+unsigned char send_idx = 0;
 
 unsigned char recv_buf[256];
 unsigned char recv_idx = 0;
 
 /* transmits data using serial communication */
-void transmitData()
+void data_send(void)
 {
-    if (transmitCount < 2) {
-        TXREG1 = transmitBuffer[transmitCount];
-        transmitCount++;
+    static unsigned char i = 0;
+
+    if (i < send_idx)
+    {
+        TXREG1 = send_buf[i++];
     }
-    else {                  // all the bytes have been sent
-        TXSTA1bits.TXEN = 0;// disable transmitter, will be enabled again in 250 msecs
+    else
+    {
+        TXSTA1bits.TXEN = 0;
+        send_idx = 0;
+        i = 0;
     }
 }
 
 /* Invoked when receive interrupt occurs; meaning that data is received */
-void data_recv()
+void data_recv(void)
 {
     unsigned char rxbyte = RCREG1;
 

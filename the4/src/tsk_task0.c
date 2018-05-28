@@ -22,5 +22,7 @@ TASK(TASK0)
             }
             CancelAlarm(ALARM_TSK0);
         }
+
+        SetEvent(TASK1_ID, GO_EVENT);
     }
 }

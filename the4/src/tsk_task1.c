@@ -1,5 +1,28 @@
 #include "common.h"
 
+TASK(TASK1) 
+{
+    WaitEvent(GO_EVENT);
+    ClearEvent(GO_EVENT);
+
+    SetRelAlarm(ALARM_TSK1, 50, 50);
+    while(1)
+    {
+        WaitEvent(ALARM_EVENT);
+        ClearEvent(ALARM_EVENT);
+
+        send_buf[send_idx++] = '$';
+        send_buf[send_idx++] = 'F';
+        send_buf[send_idx++] = ':';
+        TXSTA1bits.TXEN = 1;
+    }
+
+    TerminateTask();
+}
+
+#if 0
+#include "common.h"
+
 /**********************************************************************
  * ----------------------- LOCAL FUNCTIONS ----------------------------
  **********************************************************************/
@@ -47,3 +70,4 @@ TASK(TASK1)
 }
 
 /* End of File : tsk_task1.c */
+#endif

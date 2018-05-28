@@ -17,6 +17,7 @@
  **********************************************************************/
 #define ALARM_EVENT       0x80
 #define RECV_EVENT        0x10
+#define GO_EVENT          0x20
 
 /***********************************************************************
  * ----------------------------- Task ID -------------------------------
@@ -49,13 +50,18 @@
  * ----------------------- FUNCTION PROTOTYPES ------------------------
  **********************************************************************/
 /* transmits data using serial communication */
-void transmitData();
+void data_send(void);
 /* Invoked when receive interrupt occurs; meaning that data is received */
-void dataReceived();
+void data_recv(void);
 
-extern char systemState;		// current state of the system; _WAITING or _OPERATING
-extern char transmitBuffer[];	// holds the bytes to be transmitted/displayed. format: XXYYY
-extern char transmitCount;		// index to the transmitBuffer array; the current byte to be transmitted
+
+extern enum state_enum {
+    STATE_IDLE,
+    STATE_ACTIVE
+} sim_state;
+
+extern unsigned char send_buf[];	// holds the bytes to be transmitted/displayed. format: XXYYY
+extern unsigned char send_idx; 
 
 extern unsigned char recv_buf[];
 extern unsigned char recv_idx;

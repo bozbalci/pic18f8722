@@ -40,7 +40,7 @@ void InterruptVectorL(void)
         AddOneTick();
     /* Here are the other interrupts you would desire to manage */
     if (PIR1bits.TX1IF == 1) {
-        transmitData();
+        data_send();
     }
     if (PIR1bits.RC1IF == 1) {
         data_recv();
