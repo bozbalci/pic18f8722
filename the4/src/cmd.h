@@ -80,7 +80,7 @@ struct cmdobject_in
         struct
         {
             char id;
-            char n[ALERT_MAX_LENGTH];
+            unsigned char n[ALERT_MAX_LENGTH];
         } alert;
         struct
         {
@@ -111,7 +111,7 @@ struct cmdobject_out {
         struct
         {
             char id;
-            char n[COMPUTE_MAX_LENGTH];
+            unsigned char n[COMPUTE_MAX_LENGTH];
         } compute;
     } cmd;
 

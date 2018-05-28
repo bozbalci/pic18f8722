@@ -9,12 +9,17 @@ TASK(TASK1)
 
     while (1)
     {
-        // TODO Fill cout or have it filled by some other task!
-
+        // TODO Wait for command ready signal as well!
         WaitEvent(ALARM_EVENT);
         ClearEvent(ALARM_EVENT);
 
-        cmdobject_tobuffer(send_buf, cout);
+        if (GetResource(1) == E_OK)
+        {
+            cmdobject_tobuffer(send_buf, cout);
+
+            ReleaseResource(1);
+        }
+
         TXSTA1bits.TXEN = 1;
     }
 

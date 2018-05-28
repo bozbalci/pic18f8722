@@ -99,12 +99,11 @@ cmdobject_frombuffer(const char *buf, struct cmdobject_in *co)
         co->active = CT_ALERT;
 
         buf++;
-
-        length = _str_find(buf, CMD_DELIMITER, CMD_MAX_LENGTH);
-        co->cmd.alert.id = _str_to_int(buf, length);
-        buf += length + 1;
-        
+        co->cmd.alert.id = *buf - '0';
+        buf += 2; /* skip comma */
+        length = _str_find(buf, CMD_FINAL, CMD_MAX_LENGTH);
         strcpy_ram2ram(co->cmd.alert.n, buf);
+        co->cmd.alert.n[length] = '\0';
     }
 }
 

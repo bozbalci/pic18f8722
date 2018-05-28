@@ -1,7 +1,5 @@
 #include "common.h"
 
-enum state_enum sim_state = STATE_IDLE;
-
 char send_buf[256];       // holds the bytes to be transmitted
 
 char recv_buf[256];
