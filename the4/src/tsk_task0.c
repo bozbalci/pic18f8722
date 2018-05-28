@@ -1,28 +1,26 @@
 #include "common.h"
+#include "cmd.h"
 
 TASK(TASK0) 
 {
-    LATBbits.LATB0 ^= 1;
-    for (;;)
+    while (1)
     {
-        unsigned char i;
         WaitEvent(RECV_EVENT);
         ClearEvent(RECV_EVENT);
 
-        for (i = 0; recv_buf[i] != ':'; i++)
-        {
-            unsigned char times = recv_buf[i] - '0';
-            SetRelAlarm(ALARM_TSK0, 1000, 200);
-            while (times)
-            {
-                WaitEvent(ALARM_EVENT);
-                ClearEvent(ALARM_EVENT);
-                LATBbits.LATB0 ^= 1;
-                times--;
-            }
-            CancelAlarm(ALARM_TSK0);
-        }
+        cmdobject_frombuffer(recv_buf, &cin);
 
-        SetEvent(TASK1_ID, GO_EVENT);
+        switch (cin.active)
+        {
+            case CT_GO:
+                SetEvent(TASK1_ID, GO_EVENT);
+                break;
+
+            case CT_RESPONSE:
+                break;
+
+            case CT_ALERT:
+                break;
+        }
     }
 }

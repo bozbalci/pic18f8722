@@ -2,6 +2,8 @@
 #define COMMON_H
 
 #include "device.h"
+#include "cmd.h"
+#include "str.h"
 
 /***********************************************************************
  * ------------------------ Timer settings -----------------------------
@@ -60,10 +62,12 @@ extern enum state_enum {
     STATE_ACTIVE
 } sim_state;
 
-extern unsigned char send_buf[];	// holds the bytes to be transmitted/displayed. format: XXYYY
-extern unsigned char send_idx; 
+extern char send_buf[];	// holds the bytes to be transmitted/displayed. format: XXYYY
 
-extern unsigned char recv_buf[];
+extern char recv_buf[];
 extern unsigned char recv_idx;
+
+extern struct cmdobject_in cin;
+extern struct cmdobject_out cout;
 
 #endif

@@ -2,25 +2,26 @@
 
 enum state_enum sim_state = STATE_IDLE;
 
-unsigned char send_buf[256];       // holds the bytes to be transmitted
-unsigned char send_idx = 0;
+char send_buf[256];       // holds the bytes to be transmitted
 
-unsigned char recv_buf[256];
+char recv_buf[256];
 unsigned char recv_idx = 0;
+
+struct cmdobject_in cin;
+struct cmdobject_out cout;
 
 /* transmits data using serial communication */
 void data_send(void)
 {
     static unsigned char i = 0;
 
-    if (i < send_idx)
+    if (send_buf[i])
     {
         TXREG1 = send_buf[i++];
     }
     else
     {
         TXSTA1bits.TXEN = 0;
-        send_idx = 0;
         i = 0;
     }
 }
@@ -28,7 +29,7 @@ void data_send(void)
 /* Invoked when receive interrupt occurs; meaning that data is received */
 void data_recv(void)
 {
-    unsigned char rxbyte = RCREG1;
+    char rxbyte = RCREG1;
 
     recv_buf[recv_idx++] = rxbyte;
 
