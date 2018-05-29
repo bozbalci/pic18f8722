@@ -66,10 +66,10 @@ cmdobject_frombuffer(const char *buf, struct cmdobject_in *co)
         co->cmd.response.rot = _str_to_int(buf, length);
         buf += length + 1;
 
-        co->cmd.response.top    = _char_to_ci(buf[0]);
-        co->cmd.response.right  = _char_to_ci(buf[1]);
-        co->cmd.response.bottom = _char_to_ci(buf[2]);
-        co->cmd.response.left   = _char_to_ci(buf[3]);
+        co->cmd.response.front = _char_to_ci(buf[0]);
+        co->cmd.response.right = _char_to_ci(buf[1]);
+        co->cmd.response.back  = _char_to_ci(buf[2]);
+        co->cmd.response.left  = _char_to_ci(buf[3]);
 
         buf += 4; /* skip comma */
 

@@ -85,7 +85,7 @@ struct cmdobject_in
         struct
         {
             char posx, posy, rot;
-            enum cellinfo top, right, bottom, left;
+            enum cellinfo front, right, back, left;
             enum direction dir;
         } response;
     } cmd;
