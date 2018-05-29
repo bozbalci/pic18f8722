@@ -7,6 +7,7 @@ unsigned char recv_idx = 0;
 
 struct cmdobject_in cin;
 struct cmdobject_out cout;
+struct robotstate rs;
 
 /* transmits data using serial communication */
 void data_send(void)

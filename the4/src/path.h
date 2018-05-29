@@ -18,7 +18,7 @@ struct robotstate
 };
 
 void
-robotstate_update(struct robotstate *rs, struct cmdobject_in co);
+robotstate_update(struct robotstate *rs, const struct cmdobject_in *co);
 
 void
 robotstate_dispatch(struct robotstate *rs, struct cmdobject_out *co);

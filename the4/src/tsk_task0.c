@@ -39,7 +39,7 @@ TASK(TASK0)
                 break;
 
             case CT_ALERT:
-                SetEvent(TASK2_ID, ALERT_EVENT);
+                //SetEvent(TASK2_ID, ALERT_EVENT);
                 break;
         }
     }

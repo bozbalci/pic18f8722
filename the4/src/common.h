@@ -4,6 +4,7 @@
 #include "device.h"
 #include "cmd.h"
 #include "str.h"
+#include "path.h"
 
 /***********************************************************************
  * ------------------------ Timer settings -----------------------------
@@ -59,5 +60,6 @@ extern unsigned char recv_idx;
 
 extern struct cmdobject_in cin;
 extern struct cmdobject_out cout;
+extern struct robotstate rs;
 
 #endif

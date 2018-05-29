@@ -1,4 +1,5 @@
 #include "common.h"
+#include "path.h"
 #include "cmd.h"
 
 static struct cmdobject_in cin_copy;
@@ -17,15 +18,13 @@ TASK(TASK3)
             ReleaseResource(0);
         }
 
-        // TODO Process sensor response
+        robotstate_update(&rs, &cin_copy);
+
         // TODO Implement motion planning
-        // TODO Implement key picking logic
-        // TODO Implement END command logic
 
         if (GetResource(1) == E_OK)
         {
-            cout.active = CT_MOTION;
-            cout.cmd.motion.mt = MT_FORWARD;
+            robotstate_dispatch(&rs, &cout);
 
             ReleaseResource(1);
         }
