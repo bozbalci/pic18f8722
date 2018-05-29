@@ -3,6 +3,18 @@
 
 TASK(TASK0) 
 {
+    /* configure USART transmitter/receiver */
+    SPBRG1 = 21;		// for 40 MHz, to have 115200 baud rate, it should be 21
+    TXSTA1 = 0x04;      // (= 00000100) 8-bit transmit, transmitter NOT enabled,
+    // asynchronous, high speed mode
+    RCSTA1 = 0x90;      // (= 10010000) 8-bit receiver, receiver enabled,
+    // continuous receive, serial port enabled
+
+    /* configure the interrupts */
+    PIE1bits.TX1IE = 1;	// enable USART transmit interrupt
+    PIE1bits.RC1IE = 1;	// enable USART receive interrupt
+
+
     while (1)
     {
         WaitEvent(RECV_EVENT);
