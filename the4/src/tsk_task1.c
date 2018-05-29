@@ -15,6 +15,9 @@ TASK(TASK1)
 
         if (GetResource(1) == E_OK)
         {
+            cout.active = CT_MOTION;
+            cout.cmd.motion.mt = MT_LEFT;
+            
             cmdobject_tobuffer(send_buf, cout);
 
             ReleaseResource(1);

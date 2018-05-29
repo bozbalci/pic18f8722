@@ -19,8 +19,19 @@ void data_send(void)
     }
     else
     {
+        i = 96;
+
+        /* XXX
+         * In the marvelous world of embedded systems development, there are
+         * no temporary hacks. This is the pinnacle of engineering.
+         *
+         * What the fuck?
+         */
+
+        while (++i)
+            ;
+
         TXSTA1bits.TXEN = 0;
-        i = 0;
     }
 }
 

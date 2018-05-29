@@ -36,6 +36,12 @@ void InterruptVectorL(void)
 {
     EnterISR();
 
+    if (RCSTA1bits.OERR)
+    {
+        RCSTA1bits.CREN = 0;
+        RCSTA1bits.CREN = 1;
+    }
+
     if (INTCONbits.TMR0IF == 1)
         AddOneTick();
     /* Here are the other interrupts you would desire to manage */
