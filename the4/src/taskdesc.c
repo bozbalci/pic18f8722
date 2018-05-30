@@ -87,7 +87,7 @@ unsigned char RESOURCENUMBER = _RESOURCENUMBER_;
 /**********************************************************************
  * ----------------------- TASK & STACK DEFINITION --------------------
  **********************************************************************/
-#define DEFAULT_STACK_SIZE      128
+#define DEFAULT_STACK_SIZE      200
 DeclareTask(TASK0);
 DeclareTask(TASK1);
 DeclareTask(TASK2);
@@ -100,7 +100,7 @@ volatile unsigned char stack0[DEFAULT_STACK_SIZE];
 #pragma		udata      STACK_B
 volatile unsigned char stack1[DEFAULT_STACK_SIZE];
 #pragma		udata      STACK_C
-volatile unsigned char stack2[DEFAULT_STACK_SIZE];
+volatile unsigned char stack2[256];
 #pragma		udata      STACK_D
 volatile unsigned char stack3[DEFAULT_STACK_SIZE];
 #pragma		udata

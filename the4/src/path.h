@@ -15,6 +15,8 @@ struct robotstate
     char have_key;
     char reached_door;
     char sensor_ctr;
+
+    char to_compute;
 };
 
 void

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "cmd.h"
+#include "path.h"
 
 TASK(TASK0) 
 {
@@ -14,6 +15,9 @@ TASK(TASK0)
     PIE1bits.TX1IE = 1;	// enable USART transmit interrupt
     PIE1bits.RC1IE = 1;	// enable USART receive interrupt
 
+    rs.to_compute = 1;
+
+    LATBbits.LATB0 = 0;
 
     while (1)
     {
@@ -39,7 +43,9 @@ TASK(TASK0)
                 break;
 
             case CT_ALERT:
-                //SetEvent(TASK2_ID, ALERT_EVENT);
+                if (rs.to_compute++ == cin.cmd.alert.id)
+                    SetEvent(TASK2_ID, ALERT_EVENT);
+                
                 break;
         }
     }

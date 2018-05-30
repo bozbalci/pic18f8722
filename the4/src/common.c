@@ -1,8 +1,8 @@
 #include "common.h"
 
-char send_buf[256];       // holds the bytes to be transmitted
+char send_buf[64]; // kim bilecek abi
 
-char recv_buf[256];
+char recv_buf[64];
 unsigned char recv_idx = 0;
 
 struct cmdobject_in cin;
@@ -14,9 +14,35 @@ void data_send(void)
 {
     static unsigned char i = 0;
 
+    static unsigned char can_accept_start = 1;
+    static unsigned char can_accept_end = 0;
+
     if (send_buf[i])
     {
-        TXREG1 = send_buf[i++];
+        TXREG1 = send_buf[i];
+
+        if (send_buf[i] == '$' && !can_accept_start)
+        {
+            LATBbits.LATB0 = 1;
+        }
+
+        if (send_buf[i] == ':' && !can_accept_end)
+        {
+            LATBbits.LATB1 = 1;
+        }
+
+        if (send_buf[i] == '$')
+        {
+            can_accept_start = 0;
+            can_accept_end = 1;
+        }
+        else if (send_buf[i] == ':')
+        {
+            can_accept_start = 1;
+            can_accept_end = 0;
+        }
+
+        i++;
     }
     else
     {

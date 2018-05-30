@@ -38,7 +38,7 @@
 
 /* Priorities of the tasks */
 #define TASK0_PRIO           8
-#define TASK1_PRIO           8
+#define TASK1_PRIO           7
 #define TASK2_PRIO           1
 #define TASK3_PRIO           4
 
