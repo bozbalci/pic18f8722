@@ -1,3 +1,27 @@
+/*
+ * Berk Özbalcı, 2171791
+ * Yağmur Oymak, 2171783
+ * 
+ * Task 0 is the receiver/parser. Whenever the interrupt handler reads the command
+ * terminator character, ':', it fires up an event that wakes task 0 up. The task
+ * then parses the command and fills input command descriptor structure
+ * struct cmdobject_in (cin) accordingly. After filling the structure, it wakes up
+ * the task related to the command by firing the appropriate event.
+ *
+ * Task 1 is the transmitter. It fills up the send buffers according to the output
+ * command descriptor, struct cmdobject_out, cout. It wakes up every 50ms by an
+ * alarm and does its work.
+ *
+ * Task 2 is the hash calculator. It is woken up by task 0 whenever an alert command
+ * is received and calculates the hash in the background (with the lowest priority).
+ * When it completes the calculation, it fills the cout object with the appropriate response.
+ *
+ * Task 3 is the motion planner/path finder. Whenever a sensors response is received,
+ * it is woken up by task 0. Then, by using the API defined in path.h,
+ * it interprets the sensor respons, plans a path for the robot and fills the cout
+ * object with appropriate commands.
+ */
+
 #pragma config OSC = HSPLL, FCMEN = OFF, IESO = OFF, PWRT = OFF, BOREN = OFF, WDT = OFF, MCLRE = ON, LPT1OSC = OFF, LVP = OFF, XINST = OFF, DEBUG = OFF
 
 #include "common.h"
