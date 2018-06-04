@@ -1,7 +1,9 @@
 #include "cmd.h"
 #include "str.h"
 
-enum cellinfo _char_to_ci(char c)
+// Converts a character to an enum cellinfo.
+enum cellinfo
+_char_to_ci(char c)
 {
     if (c == '0')
         return CI_FREE;
@@ -11,6 +13,7 @@ enum cellinfo _char_to_ci(char c)
     return CI_KEY;
 }
 
+// A naive implementation of the standard C function atoi.
 int
 _str_to_int(const char *buf, char nbytes)
 {
@@ -25,6 +28,7 @@ _str_to_int(const char *buf, char nbytes)
     return result;
 }
 
+// A naive implementation of the standard C function strnstr.
 char
 _str_find(const char *buf, char target, char nbytes)
 {
@@ -37,11 +41,15 @@ _str_find(const char *buf, char target, char nbytes)
     return -1;
 }
 
+// Populates a struct cmdobject_in with the parsed information made available
+// in the character buffer. Does not handle string validation (except only in a
+// few very, very simple cases).
 void
 cmdobject_frombuffer(const char *buf, struct cmdobject_in *co)
 {
     int length;
 
+    // Skip the dollar sign - this is assumed to be present in all inputs.
     buf++;
 
     if (!cstrncmp(buf, CMD_GO, 2))
@@ -107,6 +115,8 @@ cmdobject_frombuffer(const char *buf, struct cmdobject_in *co)
     }
 }
 
+// Populates a character buffer using the information provided by a struct
+// cmdobject_out.
 void
 cmdobject_tobuffer(char *buf, struct cmdobject_out co)
 {
