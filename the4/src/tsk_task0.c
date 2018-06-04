@@ -24,7 +24,6 @@ TASK(TASK0)
         WaitEvent(RECV_EVENT);
         ClearEvent(RECV_EVENT);
 
-        // TODO Make sure this mutual exclusion works
         if (GetResource(0) == E_OK)
         {
             cmdobject_frombuffer(recv_buf, &cin);
@@ -43,6 +42,7 @@ TASK(TASK0)
                 break;
 
             case CT_ALERT:
+                // Initiate the hash computing task only if the ID is valid
                 if (rs.to_compute++ == cin.cmd.alert.id)
                     SetEvent(TASK2_ID, ALERT_EVENT);
                 
