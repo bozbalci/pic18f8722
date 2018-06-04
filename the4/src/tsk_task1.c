@@ -19,6 +19,8 @@ TASK(TASK1)
         
         if (cout.active == CT_MOTION)
         {
+            // Every 10 commands, instead of sending the appropriate response
+            // for the motion, just send a SENSE command.
             rs.sensor_ctr++;
 
             if (rs.sensor_ctr == SENSOR_FREQ)
