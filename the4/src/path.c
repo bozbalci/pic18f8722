@@ -1,5 +1,9 @@
 #include "path.h"
 
+// This routine is responsible for updating the struct robotstate using
+// the struct response within the struct cmdobject_in. This newly set
+// information includes position, some flags (can pickup key, reached door)
+// and the target rotation.
 void
 robotstate_update(struct robotstate *rs, const struct cmdobject_in *co)
 {
@@ -15,9 +19,19 @@ robotstate_update(struct robotstate *rs, const struct cmdobject_in *co)
     // Top right corner is the location of the key, fixed
     rs->reached_door = (rs->posx == MAP_WIDTH) && (rs->posy == 0);
 
+    // IDEALLY, this is where the pathfinding is done. Currently the robot
+    // always aims for setting its angle to zero. In our test builds, even
+    // this didn't work properly so we didn't bother writing a complete
+    // pathfinding algorithm. But hey.
     rs->target_rot = 0;
 }
 
+// This routine is responsible for filling a struct cmdobject_out using
+// the new robotstate. The END and PICK commands are fully implemented.
+// If there is some rotation to do, this will do so. If there is no more
+// rotation to do, it will send a FORWARD command.
+// Note that the SENSE command isn't sent in here. It's handled in the
+// task file.
 void
 robotstate_dispatch(struct robotstate *rs, struct cmdobject_out *co)
 {
