@@ -1,4 +1,4 @@
-// This is the cleanest fucking code any student could come up with.
+// This is the cleanest code any student could come up with.
 // It should be included as a complete listing in Steve McConnell's
 // Code Complete 2, it should be taught in the SE course Ceng350
 // as a prime example of readable and understandable code.
