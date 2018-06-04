@@ -1,5 +1,6 @@
 #include "common.h"
 
+// The following line is not for the faint of heart.
 char send_buf[64]; // kim bilecek abi
 
 char recv_buf[64];
@@ -14,13 +15,25 @@ void data_send(void)
 {
     static unsigned char i = 0;
 
+    // Read below for more information on this.
+/*
     static unsigned char can_accept_start = 1;
     static unsigned char can_accept_end = 0;
+*/
 
     if (send_buf[i])
     {
         TXREG1 = send_buf[i];
-
+        
+        // Since the transmission interrupts are very peculiar, the following state
+        // machine unexpectedly reaches a state where either RB0 or RB1 is toggled.
+        // This means that we are receiving interrupts BEFORE the character is
+        // actually written to the output terminal. We tried to hack our way out by
+        // adding a delay at the end of each transmission, but it didn't work for
+        // some cases.
+        //
+        // :/
+ /*
         if (send_buf[i] == '$' && !can_accept_start)
         {
             LATBbits.LATB0 = 1;
@@ -41,6 +54,7 @@ void data_send(void)
             can_accept_start = 1;
             can_accept_end = 0;
         }
+*/
 
         i++;
     }
