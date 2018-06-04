@@ -21,7 +21,9 @@ TASK(TASK2)
             ReleaseResource(0);
         }
 
-        // TODO This function never returns
+        // TODO^H^H^H^H This function never returns
+        // Actually it does. It just needed a stack size large enough to
+        // perform its operations.
         compute_hash(cin_copy.cmd.alert.n, result);
         
         if (GetResource(1) == E_OK)
